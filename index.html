@@ -423,8 +423,8 @@
     // --- GLOBAL CONFIGURATION ---
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHDEi_3-0oaLvlPqM3tJdDcMLCdOvr3DNRdl-DDOcAJu_oCJrLCrukhRycnN6nBcwY/exec";
     
-    // ANALYSIS_START defines metrics isolation. Post-April 14th 2026 (When customers opening balances were entered)
-    const ANALYSIS_START = new Date('2026-04-14T00:00:00');
+    // Cross-Browser timezone independent construct for 14th April 2026 milestone
+    const ANALYSIS_START = new Date(2026, 3, 14, 0, 0, 0); // 3 = April (0-indexed months)
     
     // Fallback support for local key insertion
     let apiKey = localStorage.getItem('ledgermatric_gemini_key') || "";
@@ -478,6 +478,51 @@
       ],
       isAiTyping: false
     };
+
+    // --- CUSTOM PREMIUM TOAST MESSENGER (Replaces unsafe alert boxes) ---
+    function showToast(message, type = 'info') {
+      let container = document.getElementById('toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none';
+        document.body.appendChild(container);
+      }
+
+      const toast = document.createElement('div');
+      toast.className = `p-4 rounded-xl shadow-2xl border text-xs font-bold transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2.5`;
+      
+      if (type === 'error') {
+        toast.className += ' bg-rose-950/90 border-rose-800 text-rose-200';
+      } else if (type === 'success') {
+        toast.className += ' bg-emerald-950/90 border-emerald-800 text-emerald-200';
+      } else {
+        toast.className += ' bg-slate-900/95 border-slate-800 text-slate-100';
+      }
+
+      let icon = 'info';
+      if (type === 'error') icon = 'alert-circle';
+      if (type === 'success') icon = 'check-circle';
+
+      toast.innerHTML = `
+        <i data-lucide="${icon}" class="h-4.5 w-4.5 flex-shrink-0"></i>
+        <span>${message}</span>
+      `;
+      
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => {
+          toast.remove();
+        }, 300);
+      }, 3500);
+    }
 
     // --- "KANPURCITY" CIPHER ENCODING ---
     // k-1, a-2, n-3, p-4, u-5, r-6, c-7, i-8, t-9, y-0
@@ -632,10 +677,20 @@
       const custMap = db.customers || {};
       state.customers = custMap;
 
-      const txs = (db.txns || []).map(t => ({
-        ...t,
-        parsedDate: new Date(t.date)
-      })).filter(t => !isNaN(t.parsedDate.getTime()));
+      // Safe date formatting conversion for WebKit engines
+      const txs = (db.txns || []).map(t => {
+        let pDate;
+        if (t.date) {
+          const dateStr = String(t.date).replace(/-/g, '/');
+          pDate = new Date(dateStr);
+        } else {
+          pDate = new Date(NaN);
+        }
+        return {
+          ...t,
+          parsedDate: pDate
+        };
+      }).filter(t => !isNaN(t.parsedDate.getTime()));
       
       state.rawTxns = txs;
 
@@ -883,7 +938,7 @@
       window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
       if (!window.SpeechRecognition) {
-        alert("Web Speech Voice Dictation is not supported in your browser/iframe. Please try Chrome or Safari.");
+        showToast("Speech Recognition is not supported in this Safari/browser configuration.", "error");
         return;
       }
 
@@ -1069,21 +1124,29 @@
       const pdfOutputBlob = doc.output('blob');
       const pdfFile = new File([pdfOutputBlob], `${selectedCustomer.replace(/\s+/g, '_')}_statement.pdf`, { type: 'application/pdf' });
 
-      // Attempt sharing or save
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        try {
+      // Robust check for Safari type compatibility inside Web Share API
+      let sharedSuccessful = false;
+      try {
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
           await navigator.share({
             files: [pdfFile],
             title: `Statement of ${selectedCustomer}`,
             text: `Find attached statement of accounts of ${selectedCustomer}.`
           });
-        } catch (shareErr) {
-          console.warn("Share aborted or failed, downloading direct", shareErr);
-          doc.save(`${selectedCustomer}_statement.pdf`);
+          sharedSuccessful = true;
         }
-      } else {
-        // Direct Download Fallback
-        doc.save(`${selectedCustomer}_statement.pdf`);
+      } catch (shareErr) {
+        console.warn("Share failed or was blocked on this device configuration:", shareErr);
+      }
+
+      if (!sharedSuccessful) {
+        try {
+          doc.save(`${selectedCustomer}_statement.pdf`);
+          showToast("Statement PDF exported successfully!", "success");
+        } catch (saveErr) {
+          console.error("PDF download failed:", saveErr);
+          showToast("Failed to download PDF. Please allow automatic popups.", "error");
+        }
       }
     }
 
@@ -1102,7 +1165,7 @@
       apiKey = val;
       localStorage.setItem('ledgermatric_gemini_key', val);
       document.getElementById('api-key-panel').classList.add('hidden');
-      alert("Custom Gemini AI Key saved locally!");
+      showToast("Custom Gemini AI Key saved locally!", "success");
     }
 
     // --- GEMINI AI ASSISTANT DISPATCH MECHANISM ---
@@ -1116,7 +1179,6 @@
       state.isAiTyping = true;
       renderChat();
 
-      // Gemini has access to all-time database sheet metrics starting from absolute start (Jan 1, 2000)
       const contextData = {
         global_metrics: {
           total_due: state.metrics.totalDue,
@@ -1377,17 +1439,25 @@ ${JSON.stringify(contextData, null, 2)}`;
       });
       container.innerHTML = html;
 
-      // Update circular sales share distribution doughnut chart
-      const labels = sortedCities.map(c => c[0]);
-      const dataValues = sortedCities.map(c => Math.round(c[1]));
-
-      if (cityDoughnutChart) {
-        cityDoughnutChart.destroy();
-      }
-
-      const canvasEl = document.getElementById('cityChartCanvas');
-      if (canvasEl) {
+      // Safe multi-tasking initialization wrapper for Safari WebKit
+      setTimeout(() => {
+        const canvasEl = document.getElementById('cityChartCanvas');
+        if (!canvasEl) return;
+        
         const ctx = canvasEl.getContext('2d');
+        if (!ctx) return;
+
+        if (cityDoughnutChart && typeof cityDoughnutChart.destroy === 'function') {
+          try {
+            cityDoughnutChart.destroy();
+          } catch (e) {
+            console.warn("Chart destroy exception:", e);
+          }
+        }
+
+        const labels = sortedCities.map(c => c[0]);
+        const dataValues = sortedCities.map(c => Math.round(c[1]));
+
         cityDoughnutChart = new Chart(ctx, {
           type: 'doughnut',
           data: {
@@ -1423,7 +1493,7 @@ ${JSON.stringify(contextData, null, 2)}`;
             cutout: '75%'
           }
         });
-      }
+      }, 50);
     }
 
     function renderDormantList() {
