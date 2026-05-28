@@ -1,448 +1,1099 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Users, 
-  Plus, 
-  Search, 
-  Bot, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Calendar, 
-  UserPlus, 
-  RefreshCw, 
-  MessageSquare, 
-  Send, 
-  Loader2, 
-  AlertCircle, 
-  Sparkles, 
-  Phone, 
-  MapPin,
-  Clock,
-  ChevronRight,
-  User,
-  X,
-  FileText,
-  Lock,
-  Unlock,
-  Building,
-  AlertTriangle,
-  HelpCircle
-} from 'lucide-react';
-
-// --- CONFIGURATION ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHDEi_3-0oaLvlPqM3tJdDcMLCdOvr3DNRdl-DDOcAJu_oCJrLCrukhRycnN6nBcwY/exec";
-const ANALYSIS_START = new Date('2026-04-14T00:00:00');
-const apiKey = ""; // Built-in platform environment manages Gemini API key injection
-
-export default function App() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [loaderText, setLoaderText] = useState("Fetching Cloud Ledger...");
-  const [rawTxns, setRawTxns] = useState([]);
-  const [filteredTxns, setFilteredTxns] = useState([]);
-  const [customers, setCustomers] = useState({});
-  const [globalBalances, setGlobalBalances] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // A/B Decryption Mode States
-  const [currentMode, setCurrentMode] = useState('A'); // 'A' (Cipher) or 'B' (Real Value)
-  const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const [unlockPassword, setUnlockPassword] = useState("");
-  const [unlockError, setUnlockError] = useState(false);
-
-  // Drilldown Selected Customer State
-  const [selectedDrilldownCustomer, setSelectedDrilldownCustomer] = useState(null);
-
-  // Advanced Metrics State
-  const [dormantWeeksLimit, setDormantWeeksLimit] = useState(4);
-  const [dormantCustomersList, setDormantCustomersList] = useState([]);
-
-  // Dashboard Metrics
-  const [metrics, setMetrics] = useState({
-    totalDue: 0,
-    totalSales: 0,
-    recentCollections: 0,
-    age15: 0,
-    age30: 0,
-    agePlus: 0,
-    cityDebt: {},
-    citySales: {} // Total sales billed by city
-  });
-
-  // Rolling State
-  const [currentRange, setCurrentRange] = useState(7);
-  const [rollingTopCustomers, setRollingTopCustomers] = useState([]);
-  const [rollingDateText, setRollingDateText] = useState("");
-
-  // Performance Summary Tab States
-  const [currentTab, setCurrentTab] = useState('month'); // 'week' | 'month' | 'qtr'
-  const [selectedPeriod, setSelectedPeriod] = useState(null);
-  const [periodBilled, setPeriodBilled] = useState(0);
-  const [periodPaid, setPeriodPaid] = useState(0);
-  const [periodTopCustomers, setPeriodTopCustomers] = useState([]);
-  const [topPeriodsList, setTopPeriodsList] = useState([]);
-
-  // Gemini AI Chat State
-  const [aiMessageInput, setAiMessageInput] = useState("");
-  const [aiMessages, setAiMessages] = useState([
-    {
-      role: "assistant",
-      content: "Hello! I am your LedgerMetric Gemini AI Assistant. Ask me anything about your sheet database. For example:\n\n* 'Which city has the highest billing sales?'\n* 'List the dormant customers who haven't paid me in 4 weeks.'"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LedgerMetric Pro AI</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Inter Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- ChartJS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jsPDF CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #040406;
+      color: #e2e8f0;
     }
-  ]);
-  const [isAiTyping, setIsAiTyping] = useState(false);
-  const chatEndRef = useRef(null);
-
-  // --- "KANPURCITY" CIPHER ENCODING ---
-  // k-1, a-2, n-3, p-4, u-5, r-6, c-7, i-8, t-9, y-0
-  const encodeValue = (val) => {
-    const num = Math.round(val);
-    if (isNaN(num)) return "N/A";
-    const sign = num < 0 ? "-" : "";
-    const absStr = String(Math.abs(num));
-    const map = {
-      '1': 'K', '2': 'A', '3': 'N', '4': 'P', '5': 'U',
-      '6': 'R', '7': 'C', '8': 'I', '9': 'T', '0': 'Y'
-    };
-    return sign + absStr.split('').map(char => map[char] || 'X').join('');
-  };
-
-  const renderAmountValue = (val) => {
-    if (currentMode === 'A') {
-      return encodeValue(val);
+    /* Custom premium scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
     }
-    return "₹" + Math.round(val).toLocaleString('en-IN');
-  };
-
-  // --- PASSWORD INPUT PASSWORD MONITOR ---
-  const handlePasswordChange = (e) => {
-    const input = e.target.value;
-    setUnlockPassword(input);
-    if (input.toLowerCase() === "code") {
-      setCurrentMode('B');
-      setShowUnlockModal(false);
-      setUnlockPassword("");
-      setUnlockError(false);
-    } else if (input.length >= 4) {
-      setUnlockError(true);
-    } else {
-      setUnlockError(false);
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.3);
     }
-  };
-
-  // --- FETCH DATA (JSONP) ---
-  const fetchData = async () => {
-    setIsLoading(true);
-    setLoaderText("Connecting to cloud database...");
-
-    try {
-      const callbackName = 'cb' + Date.now();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout")), 10000)
-      );
-
-      const fetchPromise = new Promise((resolve, reject) => {
-        window[callbackName] = (data) => {
-          cleanup();
-          resolve(data);
-        };
-
-        const script = document.createElement('script');
-        script.id = 'jsonp-' + callbackName;
-        script.src = `${SCRIPT_URL}?action=getData&callback=${callbackName}`;
-        script.onerror = () => {
-          cleanup();
-          reject(new Error("JSONP Load Error"));
-        };
-
-        const cleanup = () => {
-          delete window[callbackName];
-          const el = document.getElementById('jsonp-' + callbackName);
-          if (el) el.remove();
-        };
-
-        document.body.appendChild(script);
-      });
-
-      const result = await Promise.race([fetchPromise, timeoutPromise]);
-      setLoaderText("Analyzing sheet logs...");
-      processData(result);
-    } catch (err) {
-      console.warn("Falling back to demo mock dataset matches.");
-      setLoaderText("Syncing Offline Mock...");
-      
-      const demoResult = {
-        customers: {
-          "Shingar Kala": { city: "meena bazar", phone: "9812345670", joinedDate: "2026-04-13" },
-          "madan": { city: "meena bazar", phone: "9812345671", joinedDate: "2026-04-13" },
-          "sanjeev ji": { city: "Atari bazar", phone: "9812345672", joinedDate: "2026-04-13" },
-          "sat guru kirpa": { city: "meena bazar", phone: "9812345673", joinedDate: "2026-04-13" },
-          "Turli": { city: "meena bazar", phone: "9812345674", joinedDate: "2026-04-13" },
-          "Prem Ji di Hatti": { city: "Phagwara", phone: "9812345675", joinedDate: "2026-04-13" },
-          "rahul arora": { city: "Bargo camp", phone: "9812345676", joinedDate: "2026-04-13" },
-          "minty": { city: "meena bazar", phone: "9812345677", joinedDate: "2026-04-13" },
-          "kapil ji": { city: "Jalandhar", phone: "9812345678", joinedDate: "2026-04-13" },
-          "KAKA JI": { city: "hazipur", phone: "9812345679", joinedDate: "2026-04-13" }
-        },
-        txns: [
-          { name: "Shingar Kala", amount: 0, date: "2026-04-13", type: "join" },
-          { name: "Shingar Kala", amount: 3530, date: "2026-04-13", type: "bill" },
-          { name: "Shingar Kala", amount: 1805, date: "2026-04-13", type: "bill" },
-          { name: "Shingar Kala", amount: 1805, date: "2026-04-13", type: "bill" },
-          { name: "Shingar Kala", amount: 3570, date: "2026-04-13", type: "bill" },
-          { name: "Shingar Kala", amount: 3865, date: "2026-04-13", type: "bill" },
-          { name: "Shingar Kala", amount: 1700, date: "2026-04-13", type: "bill" },
-          { name: "madan", amount: 0, date: "2026-04-13", type: "join" },
-          { name: "madan", amount: 2250, date: "2026-04-13", type: "bill" },
-          { name: "madan", amount: 100, date: "2026-04-13", type: "bill" },
-          { name: "madan", amount: 2585, date: "2026-04-13", type: "bill" },
-          { name: "madan", amount: 1980, date: "2026-04-13", type: "bill" },
-          { name: "madan", amount: 1495, date: "2026-04-13", type: "bill" },
-          { name: "madan", amount: 40, date: "2026-04-13", type: "bill" },
-          { name: "madan", amount: 3815, date: "2026-04-13", type: "bill" },
-          { name: "madan", amount: 2563, date: "2026-04-13", type: "bill" },
-          { name: "madan", amount: 30000, date: "2026-04-13", type: "pay" },
-          { name: "sanjeev ji", amount: 0, date: "2026-04-13", type: "join" },
-          { name: "sanjeev ji", amount: 725, date: "2026-04-13", type: "pay" },
-          { name: "sanjeev ji", amount: 17387, date: "2026-04-13", type: "bill" },
-          { name: "sanjeev ji", amount: 7485, date: "2026-04-13", type: "bill" },
-          { name: "sanjeev ji", amount: 6000, date: "2026-04-13", type: "pay" },
-          { name: "sanjeev ji", amount: 15000, date: "2026-04-13", type: "pay" },
-          { name: "sat guru kirpa", amount: 0, date: "2026-04-13", type: "join" },
-          { name: "sat guru kirpa", amount: 30000, date: "2026-04-13", type: "pay" },
-          { name: "sat guru kirpa", amount: 7675, date: "2026-04-13", type: "bill" },
-          { name: "Shingar Kala", amount: 136153, date: "2026-04-13", type: "bill" },
-          { name: "madan", amount: 106602, date: "2026-04-13", type: "bill" }
-        ]
-      };
-      processData(demoResult);
-    } finally {
-      setTimeout(() => setIsLoading(false), 500);
+    ::-webkit-scrollbar-thumb {
+      background: rgba(245, 158, 11, 0.2);
+      border-radius: 4px;
     }
-  };
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(245, 158, 11, 0.4);
+    }
+    /* Mic animation pulse */
+    @keyframes pulse-red {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.15); opacity: 0.7; }
+    }
+    .mic-recording {
+      animation: pulse-red 1.2s infinite;
+      background-color: #ef4444 !important;
+      color: white !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-20">
 
-  // --- STATS PROFILES COMPILER ---
-  const processData = (db) => {
-    const custMap = db.customers || {};
-    setCustomers(custMap);
+  <!-- --- LOADING SPLASH SCREEN --- -->
+  <div id="loader-screen" class="fixed inset-0 z-50 bg-[#040406] flex flex-col items-center justify-center p-6 text-center">
+    <div class="bg-amber-500/10 p-4 rounded-2xl border border-amber-500/20 text-amber-500 mb-4 animate-bounce">
+      <i data-lucide="trending-up" class="h-8 w-8"></i>
+    </div>
+    <div class="flex items-center space-x-2.5 text-slate-200 font-bold mb-2">
+      <i data-lucide="loader-2" class="h-5 w-5 animate-spin text-amber-500"></i>
+      <span id="loader-text">Fetching Cloud Ledger...</span>
+    </div>
+    <p class="text-xs text-slate-500 max-w-xs leading-relaxed">Connecting safely to Google Sheets backend systems to audit ledgers.</p>
+  </div>
 
-    const txs = (db.txns || []).map(t => ({
-      ...t,
-      parsedDate: new Date(t.date)
-    })).filter(t => !isNaN(t.parsedDate.getTime()));
+  <!-- --- MAIN APPLICATION CONTAINER (Hidden until loaded) --- -->
+  <div id="app-container" class="hidden">
     
-    setRawTxns(txs);
+    <!-- --- APP BAR --- -->
+    <header class="bg-slate-900/80 border-b border-slate-800 sticky top-0 z-40 px-4 py-3 backdrop-blur-md flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <div class="bg-amber-500/10 p-2 rounded-xl border border-amber-500/20 text-amber-500">
+          <i data-lucide="trending-up" class="h-5 w-5"></i>
+        </div>
+        <div>
+          <h1 class="text-sm font-black tracking-wide text-slate-100 flex items-center gap-1.5">
+            LedgerMetric <span class="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-md font-bold">Pro AI</span>
+          </h1>
+          <p class="text-[9px] text-slate-500">Real-time Cloud Ledger</p>
+        </div>
+      </div>
 
-    const filtered = txs.filter(t => t.parsedDate >= ANALYSIS_START);
-    setFilteredTxns(filtered);
+      <!-- HEADER MODE TOGGLES (Simplified - no passcode required!) -->
+      <div class="flex items-center bg-slate-950 p-1.5 rounded-xl border border-slate-800/80">
+        <button 
+          id="btn-mode-a"
+          onclick="setCipherMode('A')"
+          class="text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition"
+        >
+          <i data-lucide="lock" class="h-3 w-3"></i>
+          <span>Mode A (Cipher)</span>
+        </button>
+        <button 
+          id="btn-mode-b"
+          onclick="setCipherMode('B')"
+          class="text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition"
+        >
+          <i data-lucide="unlock" class="h-3 w-3"></i>
+          <span>Mode B (Real)</span>
+        </button>
+      </div>
+    </header>
 
-    let totalDueSum = 0;
-    let totalSalesSum = 0;
-    let collectionsSum = 0;
-    let age15Sum = 0;
-    let age30Sum = 0;
-    let agePlusSum = 0;
-    let cityDebtMap = {};
-    let citySalesMap = {};
-    const now = new Date();
-    const computedBalances = [];
+    <!-- --- NOTIFICATION RIBBON --- -->
+    <div class="bg-slate-950 px-4 py-2 border-b border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
+      <span class="flex items-center gap-1.5 font-medium">
+        <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        Ledger Status: <strong>All-Time Transaction Analysis Loaded</strong>
+      </span>
+      <button onclick="fetchData()" class="text-amber-500 flex items-center gap-1 hover:underline font-bold">
+        <i data-lucide="refresh-cw" class="h-3 w-3"></i> Refresh
+      </button>
+    </div>
 
-    Object.keys(custMap).forEach(name => {
-      // Final balances use all-time records
-      const cTxnsAll = txs.filter(t => t.name === name);
-      const salesAll = cTxnsAll.filter(t => t.type === 'bill').reduce((s, t) => s + Number(t.amount || 0), 0);
-      const paysAll = cTxnsAll.filter(t => t.type === 'pay').reduce((s, t) => s + Number(t.amount || 0), 0);
-      const finalBal = salesAll - paysAll;
+    <!-- --- MAIN CONTENT GRID --- -->
+    <main class="max-w-4xl mx-auto p-4 space-y-5">
 
-      computedBalances.push({ name, balance: finalBal });
+      <!-- --- MAIN KPI BLOCKS --- -->
+      <div class="grid grid-cols-3 gap-2.5">
+        <div class="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 text-center shadow-xs">
+          <span class="text-[9px] text-slate-500 uppercase block font-bold tracking-wider">Market Due</span>
+          <p id="kpi-market-due" class="text-xs font-black text-rose-500 mt-1">...</p>
+        </div>
+        <div class="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 text-center shadow-xs">
+          <span class="text-[9px] text-slate-500 uppercase block font-bold tracking-wider">Total Sales</span>
+          <p id="kpi-total-sales" class="text-xs font-black text-amber-500 mt-1">...</p>
+        </div>
+        <div class="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 text-center shadow-xs">
+          <span class="text-[9px] text-slate-500 uppercase block font-bold tracking-wider">Collections</span>
+          <p id="kpi-collections" class="text-xs font-black text-emerald-400 mt-1">...</p>
+        </div>
+      </div>
 
-      if (finalBal > 0) {
-        totalDueSum += finalBal;
-      }
+      <!-- --- ADVANCED CREDIT HEALTH METRICS --- -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="bg-slate-900/20 border border-slate-800/50 rounded-2xl p-3.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Collection Efficiency (CEI)</span>
+            <i data-lucide="percent" class="h-4 w-4 text-emerald-400"></i>
+          </div>
+          <p id="metric-cei" class="text-lg font-black text-slate-100 mt-1.5">...</p>
+          <div class="w-full bg-slate-950 rounded-full h-1 mt-2 overflow-hidden">
+            <div id="cei-progress" class="bg-emerald-400 h-1 rounded-full" style="width: 0%"></div>
+          </div>
+          <p class="text-[9px] text-slate-500 mt-1.5">Ratio of actual cash collection to credit billed</p>
+        </div>
 
-      // Roll up filtered entries post April 14th
-      const cTxnsFiltered = filtered.filter(t => t.name === name);
-      const fSales = cTxnsFiltered.filter(t => t.type === 'bill').reduce((s, t) => s + Number(t.amount || 0), 0);
-      const fPays = cTxnsFiltered.filter(t => t.type === 'pay').reduce((s, t) => s + Number(t.amount || 0), 0);
-      const fBal = fSales - fPays;
+        <div class="bg-slate-900/20 border border-slate-800/50 rounded-2xl p-3.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Collection Cycle (DSO)</span>
+            <i data-lucide="clock" class="h-4 w-4 text-amber-400"></i>
+          </div>
+          <p id="metric-dso" class="text-lg font-black text-slate-100 mt-1.5">...</p>
+          <div class="w-full bg-slate-950 rounded-full h-1 mt-2 overflow-hidden">
+            <div id="dso-progress" class="bg-amber-400 h-1 rounded-full" style="width: 0%"></div>
+          </div>
+          <p class="text-[9px] text-slate-500 mt-1.5">Estimated average days taken to recover debts</p>
+        </div>
 
-      const city = custMap[name].city || 'Unmapped';
+        <div class="bg-slate-900/20 border border-slate-800/50 rounded-2xl p-3.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Portfolio Risk Rate</span>
+            <i data-lucide="shield-alert" class="h-4 w-4 text-rose-400"></i>
+          </div>
+          <p id="metric-risk" class="text-lg font-black text-slate-100 mt-1.5">...</p>
+          <div class="w-full bg-slate-950 rounded-full h-1 mt-2 overflow-hidden">
+            <div id="risk-progress" class="bg-rose-500 h-1 rounded-full" style="width: 0%"></div>
+          </div>
+          <p class="text-[9px] text-slate-500 mt-1.5">Percentage of outstanding held in dormant accounts</p>
+        </div>
+      </div>
 
-      if (fSales > 0) {
-        citySalesMap[city] = (citySalesMap[city] || 0) + fSales;
-      }
+      <!-- --- CUSTOMERS INTERACTIVE BOOK --- -->
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-3">
+          <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-2">
+            <i data-lucide="users" class="h-4 w-4 text-amber-500"></i> Active Ledger Customer Book
+          </h3>
+          <span class="text-[9px] text-slate-500 font-bold">Tap row to view statements & Share PDF</span>
+        </div>
 
-      if (fBal > 0) {
-        cityDebtMap[city] = (cityDebtMap[city] || 0) + fBal;
+        <input 
+          id="customer-search-input"
+          type="text" 
+          placeholder="Search custom customer name, phone, city..."
+          oninput="handleSearchQuery(this.value)"
+          class="w-full bg-slate-950 border border-slate-800/60 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 text-xs mb-3 placeholder-slate-600"
+        />
 
-        const lastBill = cTxnsFiltered.filter(t => t.type === 'bill').sort((a,b) => b.parsedDate - a.parsedDate)[0];
-        if (lastBill) {
-          const diff = Math.ceil((now - lastBill.parsedDate) / (1000 * 60 * 60 * 24));
-          if (diff <= 15) age15Sum += fBal;
-          else if (diff <= 30) age30Sum += fBal;
-          else agePlusSum += fBal;
-        } else {
-          agePlusSum += fBal;
-        }
-      }
+        <div id="customer-list-container" class="divide-y divide-slate-800/50 max-h-56 overflow-y-auto pr-1">
+          <!-- Dynamic injected rows -->
+        </div>
+      </section>
 
-      cTxnsFiltered.forEach(t => {
-        if (t.type === 'bill') totalSalesSum += Number(t.amount || 0);
-        if (t.type === 'pay') collectionsSum += Number(t.amount || 0);
-      });
-    });
+      <!-- --- ROLLING CREDIT SALES VELOCITY (TOP 10) --- -->
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
+          <div>
+            <h3 class="font-extrabold text-xs uppercase text-slate-100">Rolling Credit Sales Velocity</h3>
+            <p class="text-[9px] text-slate-500 font-medium">Scrollable Top 10 customer list based on billing activities</p>
+          </div>
 
-    computedBalances.sort((a,b) => b.balance - a.balance);
-    setGlobalBalances(computedBalances);
+          <div class="flex space-x-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800/60">
+            <button id="range-btn-7" onclick="setRollingRange(7)" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">Last 7D</button>
+            <button id="range-btn-30" onclick="setRollingRange(30)" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">Last 30D</button>
+            <button id="range-btn-90" onclick="setRollingRange(90)" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">Last 90D</button>
+          </div>
+        </div>
 
-    setMetrics({
-      totalDue: totalDueSum,
-      totalSales: totalSalesSum,
-      recentCollections: collectionsSum,
-      age15: age15Sum,
-      age30: age30Sum,
-      agePlus: agePlusSum,
-      cityDebt: cityDebtMap,
-      citySales: citySalesMap
-    });
-  };
+        <div id="rolling-list-container" class="max-h-56 overflow-y-auto pr-1 space-y-2">
+          <!-- Dynamic rolling list content -->
+        </div>
+      </section>
 
-  // --- DORMANT HIGH-RISK ACCOUNTS MONITOR ---
-  useEffect(() => {
-    const now = new Date();
-    const limitDays = dormantWeeksLimit * 7;
-    const list = [];
+      <!-- --- PERFORMANCE SUMMARY PERIODS --- -->
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
+          <div>
+            <h3 class="font-extrabold text-xs uppercase text-slate-100">Performance Summarized Periods</h3>
+            <p class="text-[9px] text-slate-500 font-medium">Click on any period to review the Top Customers for that target interval</p>
+          </div>
 
-    globalBalances.forEach(({ name, balance }) => {
-      if (balance > 0) {
-        const cTxns = rawTxns.filter(t => t.name === name && t.type === 'pay');
-        const sortedPays = cTxns.sort((a, b) => b.parsedDate - a.parsedDate);
-        const lastPay = sortedPays[0];
+          <div class="flex space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800/60">
+            <button id="perf-tab-week" onclick="setPerformanceTab('week')" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">W1-W52 Weeks</button>
+            <button id="perf-tab-month" onclick="setPerformanceTab('month')" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">Monthly</button>
+            <button id="perf-tab-qtr" onclick="setPerformanceTab('qtr')" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">Quarterly</button>
+          </div>
+        </div>
 
-        if (lastPay) {
-          const diffDays = Math.ceil((now - lastPay.parsedDate) / (1000 * 60 * 60 * 24));
-          if (diffDays >= limitDays) {
-            list.push({ name, balance, lastPayDate: lastPay.date, diffDays });
-          }
-        } else {
-          list.push({ name, balance, lastPayDate: "Never Paid", diffDays: 999 });
-        }
-      }
-    });
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Left list: top performance periods -->
+          <div>
+            <span class="text-[8px] text-slate-500 uppercase block font-bold mb-2 tracking-wider">Top Performance Periods</span>
+            <div id="perf-periods-list" class="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+              <!-- Injected period items -->
+            </div>
+          </div>
 
-    setDormantCustomersList(list.sort((a,b) => b.balance - a.balance));
-  }, [dormantWeeksLimit, globalBalances, rawTxns]);
+          <!-- Right list: selected period top customers -->
+          <div>
+            <span class="text-[8px] text-slate-500 uppercase block font-bold mb-2 tracking-wider">Top customer billing in chosen period</span>
+            <div id="perf-top-customers" class="bg-slate-950/30 border border-slate-800/60 rounded-2xl p-3 h-52 overflow-y-auto space-y-2">
+              <!-- Injected customers items -->
+            </div>
+          </div>
+        </div>
+      </section>
 
-  // --- UPDATE ROLLING RANGE TOP 10 (SCROLLABLE) ---
-  useEffect(() => {
-    const now = new Date();
-    const cutoff = new Date();
-    cutoff.setDate(now.getDate() - currentRange);
+      <!-- --- GEOGRAPHIC EXPOSURE & CIRCULAR SALES CHART --- -->
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
+        <div class="border-b border-slate-800 pb-2 mb-4">
+          <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5">
+            <i data-lucide="building" class="h-4.5 w-4.5 text-amber-500"></i> Market Demographics & City Sales Shares
+          </h3>
+        </div>
 
-    const effectiveCutoff = cutoff < ANALYSIS_START ? ANALYSIS_START : cutoff;
-    const customerSales = {};
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <!-- Sales Doughnut Chart -->
+          <div class="bg-slate-950/40 p-4 rounded-2xl border border-slate-800/50 flex flex-col items-center">
+            <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-3">Top Cities Sales Share</span>
+            <div class="w-48 h-48 relative">
+              <canvas id="cityChartCanvas"></canvas>
+            </div>
+          </div>
 
-    filteredTxns.forEach(t => {
-      if (t.type === 'bill' && t.parsedDate >= effectiveCutoff) {
-        customerSales[t.name] = (customerSales[t.name] || 0) + Number(t.amount || 0);
-      }
-    });
+          <!-- Traditional Geographic Bar Distribution -->
+          <div id="city-distribution-container" class="space-y-3.5">
+            <!-- Dynamically filled cities -->
+          </div>
+        </div>
+      </section>
 
-    const top10 = Object.entries(customerSales).sort((a,b) => b[1]-a[1]).slice(0, 10);
-    const startStr = effectiveCutoff.toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
-    const endStr = now.toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
+      <!-- --- DORMANT HIGH-RISK CUSTOMER MONITOR --- -->
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
+          <div>
+            <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5">
+              <i data-lucide="alert-triangle" class="h-4.5 w-4.5 text-rose-500"></i> High-Risk Dormant Customer Accounts
+            </h3>
+            <p class="text-[9px] text-slate-500 font-medium">List of accounts with outstandings but no recent payments received</p>
+          </div>
+
+          <div class="flex space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800/60">
+            <button id="dormant-btn-2" onclick="setDormantLimit(2)" class="text-[9px] px-2.5 py-1.5 rounded-lg font-black transition">No Pay for 2+ Wks</button>
+            <button id="dormant-btn-4" onclick="setDormantLimit(4)" class="text-[9px] px-2.5 py-1.5 rounded-lg font-black transition">No Pay for 4+ Wks</button>
+            <button id="dormant-btn-8" onclick="setDormantLimit(8)" class="text-[9px] px-2.5 py-1.5 rounded-lg font-black transition">No Pay for 8+ Wks</button>
+          </div>
+        </div>
+
+        <div id="dormant-list-container" class="divide-y divide-slate-800/50 max-h-52 overflow-y-auto pr-1">
+          <!-- Dynamic dormant customers -->
+        </div>
+      </section>
+
+      <!-- --- INTEGRATED GEMINI AI ADVISOR --- -->
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl overflow-hidden shadow-lg">
+        <div class="bg-slate-900/80 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center space-x-2.5">
+            <div class="bg-amber-500/10 p-2 rounded-xl text-amber-500">
+              <i data-lucide="bot" class="h-5 w-5 animate-pulse"></i>
+            </div>
+            <div>
+              <h3 class="font-black text-xs uppercase tracking-wider text-slate-100">Integrated Gemini AI Assistant</h3>
+              <p class="text-[9px] text-slate-500 font-bold">Ask anything about cities, credit aging or specific transaction trends</p>
+            </div>
+          </div>
+          <!-- API Key Keypad Toggle -->
+          <button id="api-key-config-btn" onclick="toggleApiKeyInput()" class="text-[9px] bg-slate-800 hover:bg-slate-700 hover:text-white px-2.5 py-1 rounded-lg border border-slate-700 text-slate-300 font-bold flex items-center gap-1 transition">
+            <i data-lucide="key" class="h-3 w-3"></i> Set API Key
+          </button>
+        </div>
+
+        <!-- Optional custom API Key drawer -->
+        <div id="api-key-panel" class="hidden bg-slate-950 p-3 border-b border-slate-800/80 text-xs">
+          <p class="text-[10px] text-slate-400 mb-2 font-medium">To talk to the AI on GitHub Pages, input your Gemini API Key below. (Key remains completely in your local browser state)</p>
+          <div class="flex gap-2">
+            <input id="custom-api-key-input" type="password" placeholder="AIzaSy..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 flex-1 text-xs outline-none focus:border-amber-500 text-slate-200" />
+            <button onclick="saveApiKey()" class="bg-amber-500 text-slate-950 font-bold px-4 py-1.5 rounded-lg text-xs hover:bg-amber-400">Save</button>
+          </div>
+        </div>
+
+        <!-- Chat messages area -->
+        <div id="chat-messages" class="max-h-60 overflow-y-auto p-4 space-y-3 bg-slate-950/20">
+          <!-- Dynamic chat transcripts -->
+        </div>
+
+        <!-- Chat input bar with Voice Dictation (Mic) -->
+        <div class="p-3 bg-white/5 border-t border-slate-800/80 flex gap-2">
+          <input 
+            id="chat-input"
+            type="text" 
+            onkeydown="if(event.key === 'Enter') dispatchAiMessage();"
+            placeholder="Ask Gemini: 'Write a warning alert for Shingar Kala'"
+            class="bg-slate-950 border border-slate-800/80 rounded-xl px-3.5 py-2.5 flex-1 text-xs outline-none focus:border-amber-500 font-medium text-slate-200"
+          />
+          
+          <!-- Mic Speak Trigger -->
+          <button 
+            id="mic-btn"
+            onclick="toggleVoiceRecognition()"
+            class="bg-slate-800 border border-slate-700/85 hover:bg-slate-700 text-slate-300 font-bold px-3 rounded-xl flex items-center justify-center transition"
+            title="Speak Prompt"
+          >
+            <i id="mic-icon" data-lucide="mic" class="h-4 w-4"></i>
+          </button>
+
+          <button 
+            id="chat-send-btn"
+            onclick="dispatchAiMessage()"
+            class="bg-amber-500 text-slate-950 font-bold p-2.5 rounded-xl flex items-center justify-center transition hover:bg-amber-400 disabled:opacity-40"
+          >
+            <i data-lucide="send" class="h-4 w-4"></i>
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- --- STATEMENT LEDGER DRILLDOWN MODAL --- -->
+    <div id="ledger-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg p-5 shadow-2xl relative">
+        <button 
+          onclick="closeLedgerModal()"
+          class="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full border border-slate-800/80"
+        >
+          <i data-lucide="x" class="h-5 w-5"></i>
+        </button>
+
+        <h3 id="ledger-modal-title" class="font-extrabold text-xs uppercase text-slate-100 mb-2 flex items-center gap-1.5">
+          <i data-lucide="file-text" class="h-4.5 w-4.5 text-amber-500"></i> Statement Ledger
+        </h3>
+        
+        <!-- Premium Action Panel: PDF Exporter settings -->
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 mb-4 mt-2">
+          <span class="text-[9px] text-amber-400 font-bold block mb-1.5 uppercase tracking-wider">Export & Share Statement</span>
+          <div class="flex items-center gap-2">
+            <div class="flex-1">
+              <select id="pdf-duration-select" class="w-full bg-slate-900 text-[11px] font-semibold border border-slate-800 rounded-lg px-2 py-1.5 outline-none text-slate-300">
+                <option value="1">Last 1 Month</option>
+                <option value="3" selected>Last 3 Months</option>
+                <option value="6">Last 6 Months</option>
+                <option value="all">All-Time Transactions</option>
+              </select>
+            </div>
+            <button 
+              id="pdf-export-btn"
+              onclick="triggerPdfGeneration()"
+              class="bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold text-[10px] px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-all"
+            >
+              <i data-lucide="share-2" class="h-3.5 w-3.5"></i>
+              <span>Share PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="ledger-modal-rows" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+          <!-- Statement entries list -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- --- JAVASCRIPT RE-IMPLEMENTED LOGIC --- -->
+  <script>
+    // --- GLOBAL CONFIGURATION ---
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHDEi_3-0oaLvlPqM3tJdDcMLCdOvr3DNRdl-DDOcAJu_oCJrLCrukhRycnN6nBcwY/exec";
     
-    setRollingDateText(`${startStr} - ${endStr}`);
-    setRollingTopCustomers(top10);
-  }, [currentRange, filteredTxns]);
+    // Note: ANALYSIS_START set to Jan 1, 2000 to process everything from the beginning till today date
+    const ANALYSIS_START = new Date('2000-01-01T00:00:00');
+    
+    // Fallback support for local key insertion
+    let apiKey = localStorage.getItem('ledgermatric_gemini_key') || "";
 
-  // --- W1 - W52 HELPER FUNCTION ---
-  const getPeriodKey = (parsedDate, type) => {
-    const d = new Date(parsedDate);
-    if (isNaN(d.getTime())) return "Unknown";
-    if (type === 'week') {
-      const yearStart = new Date(d.getFullYear(), 0, 1);
-      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-      const clampedWeek = weekNo > 52 ? 52 : weekNo;
-      return `Week ${clampedWeek}`;
-    } else if (type === 'month') {
-      return d.toLocaleString('default', { month: 'short' }) + " " + d.getFullYear();
-    } else if (type === 'qtr') {
-      const q = Math.floor(d.getMonth() / 3) + 1;
-      return "Q" + q + " " + d.getFullYear();
-    }
-    return d.getFullYear().toString();
-  };
+    // Speech recognition setup
+    let recognition = null;
+    let isRecordingVoice = false;
 
-  // --- PERFORMANCE TAB LOGIC (SCROLLABLE TOP 10 PERIODS) ---
-  useEffect(() => {
-    const periodTotals = {};
-    filteredTxns.forEach(t => {
-      if (t.type === 'bill') {
-        const pKey = getPeriodKey(t.parsedDate, currentTab);
-        periodTotals[pKey] = (periodTotals[pKey] || 0) + Number(t.amount || 0);
-      }
-    });
+    // Chart.js instance holder
+    let cityDoughnutChart = null;
 
-    const sortedPeriods = Object.entries(periodTotals).sort((a,b) => b[1] - a[1]).slice(0, 10);
-    setTopPeriodsList(sortedPeriods);
-
-    const activePeriodKey = selectedPeriod || (sortedPeriods[0] ? sortedPeriods[0][0] : null);
-
-    let billSum = 0;
-    let paySum = 0;
-    const customerMap = {};
-
-    filteredTxns.forEach(t => {
-      const tKey = getPeriodKey(t.parsedDate, currentTab);
-      if (tKey === activePeriodKey) {
-        if (t.type === 'bill') {
-          billSum += Number(t.amount || 0);
-          customerMap[t.name] = (customerMap[t.name] || 0) + Number(t.amount || 0);
-        } else if (t.type === 'pay') {
-          paySum += Number(t.amount || 0);
-        }
-      }
-    });
-
-    setPeriodBilled(billSum);
-    setPeriodPaid(paySum);
-    setPeriodTopCustomers(Object.entries(customerMap).sort((a,b) => b[1] - a[1]).slice(0, 5));
-  }, [currentTab, selectedPeriod, filteredTxns]);
-
-  // --- DISPATCH GEMINI AI ANALYSIS ---
-  const sendAiMessage = async () => {
-    if (!aiMessageInput.trim()) return;
-
-    const userText = aiMessageInput;
-    setAiMessages(prev => [...prev, { role: "user", content: userText }]);
-    setAiMessageInput("");
-    setIsAiTyping(true);
-
-    const contextData = {
-      global_metrics: {
-        total_due: metrics.totalDue,
-        total_sales: metrics.totalSales,
-        collections: metrics.recentCollections,
-        debt_aging: { age15: metrics.age15, age30: metrics.age30, agePlus: metrics.agePlus }
+    // --- APPLICATION STATE ---
+    const state = {
+      isLoading: true,
+      loaderText: "Fetching Cloud Ledger...",
+      rawTxns: [],
+      filteredTxns: [],
+      customers: {},
+      globalBalances: [],
+      searchQuery: "",
+      currentMode: 'B', // Defaults directly to real mode. (Passcode request completely removed)
+      showUnlockModal: false,
+      selectedDrilldownCustomer: null,
+      dormantWeeksLimit: 4,
+      dormantCustomersList: [],
+      metrics: {
+        totalDue: 0,
+        totalSales: 0,
+        recentCollections: 0,
+        cei: 0,
+        dso: 0,
+        riskPercent: 0,
+        cityDebt: {},
+        citySales: {}
       },
-      city_debt_exposures: metrics.cityDebt,
-      city_sales_billed: metrics.citySales,
-      customer_balances: globalBalances.map(b => ({
-        name: b.name,
-        balance: b.balance,
-        city: customers[b.name]?.city || "Jalandhar"
-      })),
-      recent_transactions: filteredTxns.slice(0, 30).map(t => ({
-        name: t.name,
-        amount: t.amount,
-        date: t.date,
-        type: t.type
-      }))
+      currentRange: 7,
+      rollingTopCustomers: [],
+      rollingDateText: "",
+      currentTab: 'month', // 'week' | 'month' | 'qtr'
+      selectedPeriod: null,
+      periodBilled: 0,
+      periodPaid: 0,
+      periodTopCustomers: [],
+      topPeriodsList: [],
+      aiMessageInput: "",
+      aiMessages: [
+        {
+          role: "assistant",
+          content: "Hello! I am your LedgerMetric Gemini AI Assistant. Ask me anything about your sheet database. For example:\n\n* 'Which city has the highest billing sales?'\n* 'List the dormant customers who haven't paid me in 4 weeks.'"
+        }
+      ],
+      isAiTyping: false
     };
 
-    const systemPrompt = `You are LedgerMetric's Financial Advisor.
+    // --- "KANPURCITY" CIPHER ENCODING ---
+    // k-1, a-2, n-3, p-4, u-5, r-6, c-7, i-8, t-9, y-0
+    const encodeValue = (val) => {
+      const num = Math.round(val);
+      if (isNaN(num)) return "N/A";
+      const sign = num < 0 ? "-" : "";
+      const absStr = String(Math.abs(num));
+      const map = {
+        '1': 'K', '2': 'A', '3': 'N', '4': 'P', '5': 'U',
+        '6': 'R', '7': 'C', '8': 'I', '9': 'T', '0': 'Y'
+      };
+      return sign + absStr.split('').map(char => map[char] || 'X').join('');
+    };
+
+    const renderAmountValue = (val) => {
+      if (state.currentMode === 'A') {
+        return encodeValue(val);
+      }
+      return "₹" + Math.round(val).toLocaleString('en-IN');
+    };
+
+    // --- ACTIONS AND DECRYPTION CONTROLS ---
+    function setCipherMode(mode) {
+      state.currentMode = mode;
+      render();
+    }
+
+    // --- FETCH DATA (WITH AUTOMATIC MOCK FALLBACK) ---
+    const fetchData = async () => {
+      state.isLoading = true;
+      state.loaderText = "Connecting to cloud database...";
+      render();
+
+      try {
+        const callbackName = 'cb' + Date.now();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Timeout")), 10000)
+        );
+
+        const fetchPromise = new Promise((resolve, reject) => {
+          window[callbackName] = (data) => {
+            cleanup();
+            resolve(data);
+          };
+
+          const script = document.createElement('script');
+          script.id = 'jsonp-' + callbackName;
+          script.src = `${SCRIPT_URL}?action=getData&callback=${callbackName}`;
+          script.onerror = () => {
+            cleanup();
+            reject(new Error("JSONP Load Error"));
+          };
+
+          const cleanup = () => {
+            delete window[callbackName];
+            const el = document.getElementById('jsonp-' + callbackName);
+            if (el) el.remove();
+          };
+
+          document.body.appendChild(script);
+        });
+
+        const result = await Promise.race([fetchPromise, timeoutPromise]);
+        state.loaderText = "Analyzing sheet logs...";
+        render();
+        processData(result);
+      } catch (err) {
+        console.warn("Falling back to demo mock dataset matches.");
+        state.loaderText = "Syncing Offline Mock...";
+        render();
+        
+        const demoResult = {
+          customers: {
+            "Shingar Kala": { city: "meena bazar", phone: "9812345670", joinedDate: "2026-01-13" },
+            "madan": { city: "meena bazar", phone: "9812345671", joinedDate: "2026-02-10" },
+            "sanjeev ji": { city: "Atari bazar", phone: "9812345672", joinedDate: "2025-11-05" },
+            "sat guru kirpa": { city: "meena bazar", phone: "9812345673", joinedDate: "2026-03-01" },
+            "Turli": { city: "meena bazar", phone: "9812345674", joinedDate: "2026-01-15" },
+            "Prem Ji di Hatti": { city: "Phagwara", phone: "9812345675", joinedDate: "2026-02-28" },
+            "rahul arora": { city: "Bargo camp", phone: "9812345676", joinedDate: "2026-03-20" },
+            "minty": { city: "meena bazar", phone: "9812345677", joinedDate: "2026-03-11" },
+            "kapil ji": { city: "Jalandhar", phone: "9812345678", joinedDate: "2025-10-14" },
+            "KAKA JI": { city: "hazipur", phone: "9812345679", joinedDate: "2026-04-01" }
+          },
+          txns: [
+            { name: "Shingar Kala", amount: 0, date: "2026-01-13", type: "join" },
+            { name: "Shingar Kala", amount: 3530, date: "2026-01-14", type: "bill" },
+            { name: "Shingar Kala", amount: 1805, date: "2026-02-15", type: "bill" },
+            { name: "Shingar Kala", amount: 1805, date: "2026-03-02", type: "bill" },
+            { name: "Shingar Kala", amount: 3570, date: "2026-03-18", type: "bill" },
+            { name: "Shingar Kala", amount: 3865, date: "2026-04-20", type: "bill" },
+            { name: "Shingar Kala", amount: 1700, date: "2026-05-11", type: "bill" },
+            { name: "madan", amount: 0, date: "2026-02-10", type: "join" },
+            { name: "madan", amount: 2250, date: "2026-02-11", type: "bill" },
+            { name: "madan", amount: 100, date: "2026-03-01", type: "bill" },
+            { name: "madan", amount: 2585, date: "2026-03-12", type: "bill" },
+            { name: "madan", amount: 1980, date: "2026-04-05", type: "bill" },
+            { name: "madan", amount: 1495, date: "2026-04-18", type: "bill" },
+            { name: "madan", amount: 40, date: "2026-05-01", type: "bill" },
+            { name: "madan", amount: 3815, date: "2026-05-15", type: "bill" },
+            { name: "madan", amount: 2563, date: "2026-05-25", type: "bill" },
+            { name: "madan", amount: 12000, date: "2026-05-27", type: "pay" },
+            { name: "sanjeev ji", amount: 0, date: "2025-11-05", type: "join" },
+            { name: "sanjeev ji", amount: 725, date: "2025-11-10", type: "pay" },
+            { name: "sanjeev ji", amount: 17387, date: "2025-12-01", type: "bill" },
+            { name: "sanjeev ji", amount: 7485, date: "2026-01-15", type: "bill" },
+            { name: "sanjeev ji", amount: 6000, date: "2026-02-20", type: "pay" },
+            { name: "sanjeev ji", amount: 15000, date: "2026-03-10", type: "pay" },
+            { name: "sat guru kirpa", amount: 0, date: "2026-03-01", type: "join" },
+            { name: "sat guru kirpa", amount: 30000, date: "2026-03-15", type: "pay" },
+            { name: "sat guru kirpa", amount: 7675, date: "2026-04-05", type: "bill" },
+            { name: "Shingar Kala", amount: 136153, date: "2026-04-12", type: "bill" },
+            { name: "madan", amount: 106602, date: "2026-05-14", type: "bill" }
+          ]
+        };
+        processData(demoResult);
+      } finally {
+        setTimeout(() => {
+          state.isLoading = false;
+          render();
+        }, 500);
+      }
+    };
+
+    // --- COMPILING ANALYTICS MATRICES ---
+    const processData = (db) => {
+      const custMap = db.customers || {};
+      state.customers = custMap;
+
+      const txs = (db.txns || []).map(t => ({
+        ...t,
+        parsedDate: new Date(t.date)
+      })).filter(t => !isNaN(t.parsedDate.getTime()));
+      
+      state.rawTxns = txs;
+
+      // Filter based on start date till today date (Analysis start set to year 2000 to grab everything)
+      const filtered = txs.filter(t => t.parsedDate >= ANALYSIS_START);
+      state.filteredTxns = filtered;
+
+      let totalDueSum = 0;
+      let totalSalesSum = 0;
+      let collectionsSum = 0;
+      let age15Sum = 0;
+      let age30Sum = 0;
+      let agePlusSum = 0;
+      let cityDebtMap = {};
+      let citySalesMap = {};
+      const now = new Date();
+      const computedBalances = [];
+
+      Object.keys(custMap).forEach(name => {
+        const cTxnsAll = txs.filter(t => t.name === name);
+        const salesAll = cTxnsAll.filter(t => t.type === 'bill').reduce((s, t) => s + Number(t.amount || 0), 0);
+        const paysAll = cTxnsAll.filter(t => t.type === 'pay').reduce((s, t) => s + Number(t.amount || 0), 0);
+        const finalBal = salesAll - paysAll;
+
+        computedBalances.push({ name, balance: finalBal });
+
+        if (finalBal > 0) {
+          totalDueSum += finalBal;
+        }
+
+        const cTxnsFiltered = filtered.filter(t => t.name === name);
+        const fSales = cTxnsFiltered.filter(t => t.type === 'bill').reduce((s, t) => s + Number(t.amount || 0), 0);
+        const fPays = cTxnsFiltered.filter(t => t.type === 'pay').reduce((s, t) => s + Number(t.amount || 0), 0);
+        const fBal = fSales - fPays;
+
+        const city = custMap[name].city || 'Unmapped';
+
+        if (fSales > 0) {
+          citySalesMap[city] = (citySalesMap[city] || 0) + fSales;
+        }
+
+        if (fBal > 0) {
+          cityDebtMap[city] = (cityDebtMap[city] || 0) + fBal;
+
+          const lastBill = cTxnsFiltered.filter(t => t.type === 'bill').sort((a,b) => b.parsedDate - a.parsedDate)[0];
+          if (lastBill) {
+            const diff = Math.ceil((now - lastBill.parsedDate) / (1000 * 60 * 60 * 24));
+            if (diff <= 15) age15Sum += fBal;
+            else if (diff <= 30) age30Sum += fBal;
+            else agePlusSum += fBal;
+          } else {
+            agePlusSum += fBal;
+          }
+        }
+
+        cTxnsFiltered.forEach(t => {
+          if (t.type === 'bill') totalSalesSum += Number(t.amount || 0);
+          if (t.type === 'pay') collectionsSum += Number(t.amount || 0);
+        });
+      });
+
+      computedBalances.sort((a,b) => b.balance - a.balance);
+      state.globalBalances = computedBalances;
+
+      // 1. CEI calculation
+      const ceiValue = totalSalesSum > 0 ? (collectionsSum / totalSalesSum) * 100 : 0;
+
+      // 2. DSO calculation: Days Sales Outstanding (Outstanding Balance / Credit Sales) * 365 days
+      const dsoValue = totalSalesSum > 0 ? (totalDueSum / totalSalesSum) * 365 : 0;
+
+      state.metrics = {
+        totalDue: totalDueSum,
+        totalSales: totalSalesSum,
+        recentCollections: collectionsSum,
+        cei: ceiValue,
+        dso: dsoValue,
+        riskPercent: 0, // Assigned inside updateDormantList
+        age15: age15Sum,
+        age30: age30Sum,
+        agePlus: agePlusSum,
+        cityDebt: cityDebtMap,
+        citySales: citySalesMap
+      };
+
+      // Recalculate derivative modules
+      updateDormantList();
+      updateRollingRangeTopCustomers();
+      updatePerformanceTabState();
+    };
+
+    // --- COHORTS AND FILTERING ACTIONS ---
+    function handleSearchQuery(val) {
+      state.searchQuery = val;
+      renderCustomersBook();
+    }
+
+    function setRollingRange(days) {
+      state.currentRange = days;
+      updateRollingRangeTopCustomers();
+      renderRollingList();
+    }
+
+    // --- SUB-SYSTEM UPDATE CALCULATIONS ---
+    function updateDormantList() {
+      const now = new Date();
+      const limitDays = state.dormantWeeksLimit * 7;
+      const list = [];
+      let totalDormantOutstanding = 0;
+
+      state.globalBalances.forEach(({ name, balance }) => {
+        if (balance > 0) {
+          const cTxns = state.rawTxns.filter(t => t.name === name && t.type === 'pay');
+          const sortedPays = cTxns.sort((a, b) => b.parsedDate - a.parsedDate);
+          const lastPay = sortedPays[0];
+
+          if (lastPay) {
+            const diffDays = Math.ceil((now - lastPay.parsedDate) / (1000 * 60 * 60 * 24));
+            if (diffDays >= limitDays) {
+              list.push({ name, balance, lastPayDate: lastPay.date, diffDays });
+              totalDormantOutstanding += balance;
+            }
+          } else {
+            list.push({ name, balance, lastPayDate: "Never Paid", diffDays: 999 });
+            totalDormantOutstanding += balance;
+          }
+        }
+      });
+
+      state.dormantCustomersList = list.sort((a,b) => b.balance - a.balance);
+      
+      // Calculate Risk Percentage (Dormant outstanding balance divided by total market outstandings)
+      state.metrics.riskPercent = state.metrics.totalDue > 0 ? (totalDormantOutstanding / state.metrics.totalDue) * 100 : 0;
+    }
+
+    function updateRollingRangeTopCustomers() {
+      const now = new Date();
+      const cutoff = new Date();
+      cutoff.setDate(now.getDate() - state.currentRange);
+
+      const effectiveCutoff = cutoff < ANALYSIS_START ? ANALYSIS_START : cutoff;
+      const customerSales = {};
+
+      state.filteredTxns.forEach(t => {
+        if (t.type === 'bill' && t.parsedDate >= effectiveCutoff) {
+          customerSales[t.name] = (customerSales[t.name] || 0) + Number(t.amount || 0);
+        }
+      });
+
+      state.rollingTopCustomers = Object.entries(customerSales).sort((a,b) => b[1]-a[1]).slice(0, 10);
+      const startStr = effectiveCutoff.toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
+      const endStr = now.toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
+      state.rollingDateText = `${startStr} - ${endStr}`;
+    }
+
+    const getPeriodKey = (parsedDate, type) => {
+      const d = new Date(parsedDate);
+      if (isNaN(d.getTime())) return "Unknown";
+      if (type === 'week') {
+        const yearStart = new Date(d.getFullYear(), 0, 1);
+        const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        const clampedWeek = weekNo > 52 ? 52 : weekNo;
+        return `Week ${clampedWeek}`;
+      } else if (type === 'month') {
+        return d.toLocaleString('default', { month: 'short' }) + " " + d.getFullYear();
+      } else if (type === 'qtr') {
+        const q = Math.floor(d.getMonth() / 3) + 1;
+        return "Q" + q + " " + d.getFullYear();
+      }
+      return d.getFullYear().toString();
+    };
+
+    function updatePerformanceTabState() {
+      const periodTotals = {};
+      state.filteredTxns.forEach(t => {
+        if (t.type === 'bill') {
+          const pKey = getPeriodKey(t.parsedDate, state.currentTab);
+          periodTotals[pKey] = (periodTotals[pKey] || 0) + Number(t.amount || 0);
+        }
+      });
+
+      const sortedPeriods = Object.entries(periodTotals).sort((a,b) => b[1] - a[1]).slice(0, 10);
+      state.topPeriodsList = sortedPeriods;
+
+      const activePeriodKey = state.selectedPeriod || (sortedPeriods[0] ? sortedPeriods[0][0] : null);
+
+      let billSum = 0;
+      let paySum = 0;
+      const customerMap = {};
+
+      state.filteredTxns.forEach(t => {
+        const tKey = getPeriodKey(t.parsedDate, state.currentTab);
+        if (tKey === activePeriodKey) {
+          if (t.type === 'bill') {
+            billSum += Number(t.amount || 0);
+            customerMap[t.name] = (customerMap[t.name] || 0) + Number(t.amount || 0);
+          } else if (t.type === 'pay') {
+            paySum += Number(t.amount || 0);
+          }
+        }
+      });
+
+      state.periodBilled = billSum;
+      state.periodPaid = paySum;
+      state.periodTopCustomers = Object.entries(customerMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
+    }
+
+    function selectPeriod(pKey) {
+      state.selectedPeriod = pKey;
+      updatePerformanceTabState();
+      renderPerformanceTab();
+    }
+
+    function setPerformanceTab(tab) {
+      state.currentTab = tab;
+      state.selectedPeriod = null;
+      updatePerformanceTabState();
+      renderPerformanceTab();
+    }
+
+    function setDormantLimit(weeks) {
+      state.dormantWeeksLimit = weeks;
+      updateDormantList();
+      renderDormantList();
+    }
+
+    // --- DRILLDOWN MODAL VIEW CONTROLS ---
+    function openLedgerModal(custName) {
+      state.selectedDrilldownCustomer = custName;
+      renderLedgerModal();
+    }
+
+    function closeLedgerModal() {
+      state.selectedDrilldownCustomer = null;
+      document.getElementById('ledger-modal').classList.add('hidden');
+    }
+
+    // --- INTEGRATED SPEECH RECOGNITION (Voice Prompter) ---
+    function toggleVoiceRecognition() {
+      const micBtn = document.getElementById('mic-btn');
+      const micIcon = document.getElementById('mic-icon');
+      const chatInput = document.getElementById('chat-input');
+
+      window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!window.SpeechRecognition) {
+        alert("Web Speech Voice Dictation is not supported in your browser/iframe. Please try Chrome or Safari.");
+        return;
+      }
+
+      if (!recognition) {
+        recognition = new window.SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-IN'; // Optimized for Indian English / regional pronunciation
+
+        recognition.onstart = () => {
+          isRecordingVoice = true;
+          micBtn.classList.add('mic-recording');
+          chatInput.placeholder = "Listening to your voice...";
+        };
+
+        recognition.onresult = (event) => {
+          const speechToText = event.results[0][0].transcript;
+          chatInput.value = speechToText;
+        };
+
+        recognition.onerror = (e) => {
+          console.warn("Speech recognition error", e);
+          stopRecording();
+        };
+
+        recognition.onend = () => {
+          stopRecording();
+        };
+      }
+
+      if (!isRecordingVoice) {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error(e);
+        }
+      } else {
+        recognition.stop();
+      }
+
+      function stopRecording() {
+        isRecordingVoice = false;
+        micBtn.classList.remove('mic-recording');
+        chatInput.placeholder = "Ask Gemini: 'Write a warning alert for Shingar Kala'";
+      }
+    }
+
+    // --- PDF EXPORT ENGINE (jsPDF) ---
+    async function triggerPdfGeneration() {
+      const selectedCustomer = state.selectedDrilldownCustomer;
+      const durationSelect = document.getElementById('pdf-duration-select');
+      const monthsSelected = durationSelect.value; // '1', '3', '6', 'all'
+      
+      if (!selectedCustomer) return;
+      
+      // Calculate date boundary
+      const now = new Date();
+      let cutoffDate = new Date(1970, 0, 1); // Earliest possible boundary for 'all'
+      
+      if (monthsSelected !== 'all') {
+        const monthsCount = parseInt(monthsSelected);
+        cutoffDate = new Date();
+        cutoffDate.setMonth(now.getMonth() - monthsCount);
+      }
+
+      // Filter transactions for specific client that are within cutoff date
+      const allTx = state.rawTxns.filter(t => t.name === selectedCustomer);
+      const filteredTx = allTx.filter(t => t.parsedDate >= cutoffDate);
+
+      // Setup jsPDF
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      // Premium Styling setup
+      doc.setFillColor(15, 23, 42); // slate-900 background header band
+      doc.rect(0, 0, 210, 38, 'F');
+
+      // Title header
+      doc.setTextColor(251, 191, 36); // amber-400
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text("LedgerMetric Statement", 14, 18);
+
+      doc.setFontSize(9);
+      doc.setTextColor(226, 232, 240); // slate-200
+      doc.text("Premium Business Credit Intelligence & Analytics", 14, 25);
+      doc.text(`Generated: ${now.toLocaleDateString('en-IN')} ${now.toLocaleTimeString()}`, 14, 31);
+
+      // Metadata customer details block
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(11);
+      doc.text("CLIENT SUMMARY INFORMATION", 14, 48);
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(selectedCustomer, 14, 55);
+
+      const meta = state.customers[selectedCustomer] || {};
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Location City: ${meta.city || 'N/A'}`, 14, 61);
+      doc.text(`Contact Phone: ${meta.phone || 'N/A'}`, 14, 66);
+      doc.text(`Statement Period: ${monthsSelected === 'all' ? 'All-Time Activity' : `Last ${monthsSelected} Month(s)`}`, 14, 71);
+
+      // Calculated details
+      const custAllTimeSales = allTx.filter(t => t.type === 'bill').reduce((s, t) => s + Number(t.amount || 0), 0);
+      const custAllTimePays = allTx.filter(t => t.type === 'pay').reduce((s, t) => s + Number(t.amount || 0), 0);
+      const totalOutstanding = custAllTimeSales - custAllTimePays;
+
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(15, 23, 42);
+      doc.text("Outstanding Due:", 140, 55);
+      doc.setFontSize(16);
+      doc.setTextColor(225, 29, 72); // rose-600
+      doc.text("INR " + Math.round(totalOutstanding).toLocaleString('en-IN'), 140, 63);
+
+      // Line dividing metadata and table
+      doc.setDrawColor(203, 213, 225);
+      doc.line(14, 78, 196, 78);
+
+      // Table Headers
+      doc.setFillColor(51, 65, 85); // slate-700
+      doc.rect(14, 84, 182, 8, 'F');
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Date", 18, 89);
+      doc.text("Type", 48, 89);
+      doc.text("Remarks", 80, 89);
+      doc.text("Amount (INR)", 165, 89);
+
+      // Populate Table Rows
+      let currentY = 97;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(51, 65, 85);
+
+      if (filteredTx.length === 0) {
+        doc.text("No transactions recorded during this specific timeframe.", 18, currentY);
+      } else {
+        filteredTx.forEach((txn, index) => {
+          // Page boundary check
+          if (currentY > 275) {
+            doc.addPage();
+            // Reprint Headers
+            doc.setFillColor(51, 65, 85);
+            doc.rect(14, 15, 182, 8, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(255, 255, 255);
+            doc.text("Date", 18, 20);
+            doc.text("Type", 48, 20);
+            doc.text("Remarks", 80, 20);
+            doc.text("Amount (INR)", 165, 20);
+            
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 65, 85);
+            currentY = 28;
+          }
+
+          // Shading alternating rows
+          if (index % 2 === 0) {
+            doc.setFillColor(248, 250, 252);
+            doc.rect(14, currentY - 5, 182, 7, 'F');
+          }
+
+          doc.text(txn.date || "N/A", 18, currentY);
+          
+          const labelType = txn.type === 'bill' ? 'BILLING' : txn.type === 'pay' ? 'PAYMENT' : txn.type.toUpperCase();
+          doc.text(labelType, 48, currentY);
+          
+          const cleanRemarks = txn.remarks ? txn.remarks.substring(0, 42) : "Initial Join Entry";
+          doc.text(cleanRemarks, 80, currentY);
+          
+          doc.setFont("helvetica", "bold");
+          doc.text(Math.round(txn.amount).toLocaleString('en-IN'), 165, currentY);
+          doc.setFont("helvetica", "normal");
+
+          currentY += 7;
+        });
+      }
+
+      // Output as PDF Blob
+      const pdfOutputBlob = doc.output('blob');
+      const pdfFile = new File([pdfOutputBlob], `${selectedCustomer.replace(/\s+/g, '_')}_statement.pdf`, { type: 'application/pdf' });
+
+      // Attempt sharing or save
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        try {
+          await navigator.share({
+            files: [pdfFile],
+            title: `Statement of ${selectedCustomer}`,
+            text: `Find attached statement of accounts of ${selectedCustomer}.`
+          });
+        } catch (shareErr) {
+          console.warn("Share aborted or failed, downloading direct", shareErr);
+          doc.save(`${selectedCustomer}_statement.pdf`);
+        }
+      } else {
+        // Direct Download Fallback
+        doc.save(`${selectedCustomer}_statement.pdf`);
+      }
+    }
+
+    // --- GEOLOCATION API KEY DRAWER TOGGLES ---
+    function toggleApiKeyInput() {
+      const el = document.getElementById('api-key-panel');
+      el.classList.toggle('hidden');
+      if (!el.classList.contains('hidden')) {
+        document.getElementById('custom-api-key-input').value = apiKey;
+      }
+    }
+
+    // --- PERSIST API KEY ---
+    function saveApiKey() {
+      const val = document.getElementById('custom-api-key-input').value.trim();
+      apiKey = val;
+      localStorage.setItem('ledgermatric_gemini_key', val);
+      document.getElementById('api-key-panel').classList.add('hidden');
+      alert("Custom Gemini AI Key saved locally!");
+    }
+
+    // --- GEMINI AI ASSISTANT DISPATCH MECHANISM ---
+    async function dispatchAiMessage() {
+      const inputEl = document.getElementById('chat-input');
+      const userText = inputEl.value.trim();
+      if (!userText) return;
+
+      state.aiMessages.push({ role: "user", content: userText });
+      inputEl.value = "";
+      state.isAiTyping = true;
+      renderChat();
+
+      const contextData = {
+        global_metrics: {
+          total_due: state.metrics.totalDue,
+          total_sales: state.metrics.totalSales,
+          collections: state.metrics.recentCollections,
+          debt_aging: { age15: state.metrics.age15, age30: state.metrics.age30, agePlus: state.metrics.agePlus }
+        },
+        city_debt_exposures: state.metrics.cityDebt,
+        city_sales_billed: state.metrics.citySales,
+        customer_balances: state.globalBalances.map(b => ({
+          name: b.name,
+          balance: b.balance,
+          city: state.customers[b.name]?.city || "Jalandhar"
+        })),
+        recent_transactions: state.filteredTxns.slice(0, 30).map(t => ({
+          name: t.name,
+          amount: t.amount,
+          date: t.date,
+          type: t.type
+        }))
+      };
+
+      const systemPrompt = `You are LedgerMetric's Financial Advisor.
 You have access to real-time sheet transactions. Answer clearly, concisely, and with accurate calculations.
 
 CIPHER CODE MATRIX ("kanpurcity"):
@@ -451,494 +1102,428 @@ k-1, a-2, n-3, p-4, u-5, r-6, c-7, i-8, t-9, y-0. (Translate if requested to dec
 CONTEXT DATA:
 ${JSON.stringify(contextData, null, 2)}`;
 
-    try {
-      const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-      const payload = {
-        contents: [{ role: "user", parts: [{ text: userText }] }],
-        systemInstruction: { parts: [{ text: systemPrompt }] }
-      };
+      try {
+        const queryKey = apiKey || "";
+        const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${queryKey}`;
+        const payload = {
+          contents: [{ role: "user", parts: [{ text: userText }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] }
+        };
 
-      const response = await fetch(apiEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        const response = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error("API Exception");
+        const result = await response.json();
+        const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || "Unable to formulate a response. Can you ask something specific about your collections?";
+        state.aiMessages.push({ role: "assistant", content: textResponse });
+      } catch (err) {
+        state.aiMessages.push({ role: "assistant", content: "⚠️ Gemini is busy auditing balances. Please verify you provided a correct API key and try again." });
+      } finally {
+        state.isAiTyping = false;
+        renderChat();
+      }
+    }
+
+    // --- CENTRAL RENDERING ENGINE ---
+    function render() {
+      // 1. App Level loaders
+      if (state.isLoading) {
+        document.getElementById('loader-screen').classList.remove('hidden');
+        document.getElementById('loader-text').innerText = state.loaderText;
+        document.getElementById('app-container').classList.add('hidden');
+        return;
+      } else {
+        document.getElementById('loader-screen').classList.add('hidden');
+        document.getElementById('app-container').classList.remove('hidden');
+      }
+
+      // 2. Mode Toggle Classes
+      const modeABtn = document.getElementById('btn-mode-a');
+      const modeBBtn = document.getElementById('btn-mode-b');
+
+      if (state.currentMode === 'A') {
+        modeABtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition bg-amber-500 text-slate-950";
+        modeBBtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition text-slate-400 hover:text-white";
+      } else {
+        modeABtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition text-slate-400 hover:text-white";
+        modeBBtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition bg-emerald-500 text-slate-950";
+      }
+
+      // 3. Render Header Actions status (Guard added to handle custom HTML changes safely)
+      const actionContainer = document.getElementById('header-action-container');
+      if (actionContainer) {
+        if (state.currentMode === 'A') {
+          actionContainer.innerHTML = `
+            <button 
+              onclick="setCipherMode('B')" 
+              class="text-xs bg-slate-950 hover:bg-slate-900 border border-slate-800/80 px-3 py-1.5 rounded-xl text-slate-300 font-bold flex items-center gap-1.5 transition"
+            >
+              <i data-lucide="lock" class="h-3.5 w-3.5 text-amber-500"></i>
+              <span>Unlock Real Values</span>
+            </button>
+          `;
+        } else {
+          actionContainer.innerHTML = `
+            <button 
+              onclick="setCipherMode('A')" 
+              class="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-emerald-400 font-bold flex items-center gap-1.5 transition"
+            >
+              <i data-lucide="unlock" class="h-3.5 w-3.5 text-emerald-500 animate-pulse"></i>
+              <span>Real Values Unlocked</span>
+            </button>
+          `;
+        }
+      }
+
+      // 4. Fill main numerical KPIs
+      document.getElementById('kpi-market-due').innerText = renderAmountValue(state.metrics.totalDue);
+      document.getElementById('kpi-total-sales').innerText = renderAmountValue(state.metrics.totalSales);
+      document.getElementById('kpi-collections').innerText = renderAmountValue(state.metrics.recentCollections);
+
+      // 5. Build dynamic 3-metric highlights
+      document.getElementById('metric-cei').innerText = state.metrics.cei.toFixed(1) + "%";
+      document.getElementById('cei-progress').style.width = Math.min(state.metrics.cei, 100) + "%";
+
+      document.getElementById('metric-dso').innerText = Math.round(state.metrics.dso) + " Days";
+      // Cap at 180 days for progress bar visuals
+      const dsoProgressPct = (state.metrics.dso / 180) * 100;
+      document.getElementById('dso-progress').style.width = Math.min(dsoProgressPct, 100) + "%";
+
+      document.getElementById('metric-risk').innerText = state.metrics.riskPercent.toFixed(1) + "%";
+      document.getElementById('risk-progress').style.width = Math.min(state.metrics.riskPercent, 100) + "%";
+
+      // 6. Build Child Views
+      renderCustomersBook();
+      renderRollingList();
+      renderPerformanceTab();
+      renderCityDistribution();
+      renderDormantList();
+      renderChat();
+
+      // Trigger Lucide to recreate changed layout icons
+      lucide.createIcons();
+    }
+
+    // --- SECTION CONTROLLERS ---
+
+    function renderCustomersBook() {
+      const filteredBalances = state.globalBalances.filter(b => 
+        b.name.toLowerCase().includes(state.searchQuery.toLowerCase())
+      );
+      
+      const container = document.getElementById('customer-list-container');
+      if (filteredBalances.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No matching customers found.</p>`;
+        return;
+      }
+
+      let html = "";
+      filteredBalances.forEach(b => {
+        const cMeta = state.customers[b.name] || {};
+        html += `
+          <div 
+            onclick="openLedgerModal('${b.name}')"
+            class="flex justify-between items-center py-3 hover:bg-slate-900/40 rounded-xl px-2 transition-colors cursor-pointer"
+          >
+            <div>
+              <h4 class="font-bold text-xs text-slate-100">${b.name}</h4>
+              <p class="text-[9px] text-slate-500 mt-0.5 font-medium">${cMeta.city || "meena bazar"} • ${cMeta.phone || "N/A"}</p>
+            </div>
+            <div class="text-right">
+              <span class="font-black text-xs ${b.balance > 0 ? 'text-rose-500' : 'text-emerald-400'}">
+                ${renderAmountValue(b.balance)}
+              </span>
+              <p class="text-[8px] text-amber-500 font-bold block mt-0.5">Click to Statement</p>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function renderRollingList() {
+      // Toggle button highlights
+      [7, 30, 90].forEach(d => {
+        const btn = document.getElementById(`range-btn-${d}`);
+        if (state.currentRange === d) {
+          btn.className = "text-[9px] px-3 py-1.5 rounded-lg font-black transition bg-amber-500 text-slate-950 shadow-xs";
+        } else {
+          btn.className = "text-[9px] px-3 py-1.5 rounded-lg font-black transition text-slate-400 hover:text-white";
+        }
       });
 
-      if (!response.ok) throw new Error("API Exception");
-      const result = await response.json();
-      const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || "Unable to formulate a response. Can you ask something specific about your collections?";
-      setAiMessages(prev => [...prev, { role: "assistant", content: textResponse }]);
-    } catch (err) {
-      setAiMessages(prev => [...prev, { role: "assistant", content: "⚠️ Gemini is busy auditing balances. Please verify connection and try again." }]);
-    } finally {
-      setIsAiTyping(false);
+      const container = document.getElementById('rolling-list-container');
+      if (state.rollingTopCustomers.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 text-center py-8">No billing records for selected rolling range.</p>`;
+        return;
+      }
+
+      let html = "";
+      state.rollingTopCustomers.forEach(([name, amt], idx) => {
+        html += `
+          <div class="flex justify-between items-center py-2.5 px-3 bg-slate-950/40 rounded-xl border border-slate-800/40 text-xs">
+            <div class="flex items-center space-x-2">
+              <span class="font-extrabold text-[9px] text-amber-500">#${idx + 1}</span>
+              <span class="font-bold text-slate-200">${name}</span>
+            </div>
+            <span class="font-extrabold text-slate-100">${renderAmountValue(amt)}</span>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
     }
-  };
 
-  const filteredBalances = globalBalances.filter(b => 
-    b.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    function renderPerformanceTab() {
+      // Highlight selection tabs
+      ['week', 'month', 'qtr'].forEach(t => {
+        const btn = document.getElementById(`perf-tab-${t}`);
+        if (state.currentTab === t) {
+          btn.className = "text-[9px] px-3 py-1.5 rounded-lg font-black transition bg-amber-500 text-slate-950 shadow-xs";
+        } else {
+          btn.className = "text-[9px] px-3 py-1.5 rounded-lg font-black transition text-slate-400 hover:text-white";
+        }
+      });
 
-  return (
-    <div style={{
-      background: '#040406',
-      color: '#e2e8f0',
-      minHeight: '100vh',
-      paddingBottom: '80px',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    }}>
-      
-      {/* --- APP BAR --- */}
-      <header className="bg-slate-900/80 border-b border-slate-800 sticky top-0 z-40 px-4 py-3 backdrop-blur-md flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="bg-amber-500/10 p-2 rounded-xl border border-amber-500/20 text-amber-500">
-            <TrendingUp className="h-5 w-5" />
+      // Left column: Top Performance Periods
+      const periodsContainer = document.getElementById('perf-periods-list');
+      let periodsHtml = "";
+      const currentSelected = state.selectedPeriod || (state.topPeriodsList[0] ? state.topPeriodsList[0][0] : null);
+
+      state.topPeriodsList.forEach(([pKey, amt]) => {
+        const isSel = pKey === currentSelected;
+        periodsHtml += `
+          <div 
+            onclick="selectPeriod('${pKey}')"
+            class="flex justify-between items-center p-2.5 rounded-xl text-xs cursor-pointer border transition-all ${
+              isSel ? 'bg-amber-500/10 border-amber-500/50 text-amber-400' : 'bg-slate-950/40 border-slate-800/40 hover:border-slate-700 text-slate-300'
+            }"
+          >
+            <span class="font-bold">${pKey}</span>
+            <span class="font-extrabold">${renderAmountValue(amt)}</span>
           </div>
+        `;
+      });
+      periodsContainer.innerHTML = periodsHtml;
+
+      // Right column: Selected period details
+      const customersContainer = document.getElementById('perf-top-customers');
+      if (state.periodTopCustomers.length === 0) {
+        customersContainer.innerHTML = `<p class="text-xs text-slate-600 text-center py-10">No records found.</p>`;
+        return;
+      }
+
+      let custHtml = "";
+      state.periodTopCustomers.forEach(([name, amt], idx) => {
+        custHtml += `
+          <div class="flex justify-between items-center text-xs pb-1.5 border-b border-slate-900/60 last:border-none">
+            <span class="text-slate-300">#${idx + 1} ${name}</span>
+            <span class="font-extrabold text-slate-100">${renderAmountValue(amt)}</span>
+          </div>
+        `;
+      });
+      customersContainer.innerHTML = custHtml;
+    }
+
+    function renderCityDistribution() {
+      const container = document.getElementById('city-distribution-container');
+      const sortedCities = Object.entries(state.metrics.citySales).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+      if (sortedCities.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No city sales records available.</p>`;
+        return;
+      }
+
+      // Build text distribution listing
+      let html = "";
+      sortedCities.forEach(([city, amt]) => {
+        const totalSales = state.metrics.totalSales;
+        const pct = totalSales > 0 ? (amt / totalSales) * 100 : 0;
+        html += `
           <div>
-            <h1 className="text-sm font-black tracking-wide text-slate-100 flex items-center gap-1.5">
-              LedgerMetric <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-md font-bold">Pro AI</span>
-            </h1>
-            <p className="text-[9px] text-slate-500">Real-time Cloud Ledger</p>
+            <div class="flex justify-between text-xs font-semibold mb-1">
+              <span>${city}</span>
+              <span class="text-amber-400 font-bold">${renderAmountValue(amt)} (${pct.toFixed(1)}%)</span>
+            </div>
+            <div class="bg-slate-950 border border-slate-800/50 rounded-full h-2.5 overflow-hidden">
+              <div style="background: #f59e0b; width: ${Math.min(pct, 100)}%; height: 100%; border-radius: 999px;"></div>
+            </div>
           </div>
-        </div>
+        `;
+      });
+      container.innerHTML = html;
 
-        {/* MODE A/B TOGGLE INTERFACE */}
-        <div className="flex items-center bg-slate-950 p-1.5 rounded-xl border border-slate-800/80">
-          <button 
-            onClick={() => setCurrentMode('A')}
-            className={`text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition ${
-              currentMode === 'A' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Lock className="h-3 w-3" />
-            <span>Mode A (Cipher)</span>
-          </button>
-          
-          <button 
-            onClick={() => {
-              if (currentMode === 'A') {
-                setShowUnlockModal(true);
-              } else {
-                setCurrentMode('A');
+      // Update Circular Chart.js Doughnut Graph
+      const labels = sortedCities.map(c => c[0]);
+      const dataValues = sortedCities.map(c => Math.round(c[1]));
+
+      if (cityDoughnutChart) {
+        cityDoughnutChart.destroy();
+      }
+
+      const canvasEl = document.getElementById('cityChartCanvas');
+      if (canvasEl) {
+        const ctx = canvasEl.getContext('2d');
+        cityDoughnutChart = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: dataValues,
+              backgroundColor: [
+                '#f59e0b', // Amber-500
+                '#ef4444', // Red-500
+                '#10b981', // Emerald-500
+                '#3b82f6', // Blue-500
+                '#8b5cf6'  // Purple-500
+              ],
+              borderColor: '#0f172a',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false // Text block alongside provides detailed metrics legibly
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return ` ${context.label}: ₹${context.raw.toLocaleString('en-IN')}`;
+                  }
+                }
               }
-            }}
-            className={`text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition ${
-              currentMode === 'B' ? 'bg-emerald-500 text-slate-950 animate-pulse' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            {currentMode === 'B' ? <Unlock className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
-            <span>Mode B (Real)</span>
-          </button>
-        </div>
-      </header>
+            },
+            cutout: '75%'
+          }
+        });
+      }
+    }
 
-      {/* --- NOTIFICATION RIBBON --- */}
-      <div className="bg-slate-950 px-4 py-2 border-b border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
-        <span className="flex items-center gap-1.5 font-medium">
-          <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-          Statement Analysis Cutoff: <strong>14-Apr-2026</strong> (Inclusive)
-        </span>
-        <button onClick={fetchData} className="text-amber-500 flex items-center gap-1 hover:underline font-bold">
-          <RefreshCw className="h-3 w-3" /> Refresh
-        </button>
-      </div>
+    function renderDormantList() {
+      // Toggle button highlights
+      [2, 4, 8].forEach(w => {
+        const btn = document.getElementById(`dormant-btn-${w}`);
+        if (state.dormantWeeksLimit === w) {
+          btn.className = "text-[9px] px-2.5 py-1.5 rounded-lg font-black transition bg-rose-500/10 text-rose-400 border border-rose-500/20";
+        } else {
+          btn.className = "text-[9px] px-2.5 py-1.5 rounded-lg font-black transition text-slate-400";
+        }
+      });
 
-      <main className="max-w-4xl mx-auto p-4 space-y-5">
+      const container = document.getElementById('dormant-list-container');
+      if (state.dormantCustomersList.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 text-center py-8">No dormant accounts found for the selected limit.</p>`;
+        return;
+      }
 
-        {/* --- MAIN KPI BLOCKS --- */}
-        <div className="grid grid-cols-3 gap-2.5">
-          <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 text-center shadow-xs">
-            <span className="text-[9px] text-slate-500 uppercase block font-bold tracking-wider">Market Due</span>
-            <p className="text-xs font-black text-rose-500 mt-1">{renderAmountValue(metrics.totalDue)}</p>
-          </div>
-          <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 text-center shadow-xs">
-            <span className="text-[9px] text-slate-500 uppercase block font-bold tracking-wider">Total Sales</span>
-            <p className="text-xs font-black text-amber-500 mt-1">{renderAmountValue(metrics.totalSales)}</p>
-          </div>
-          <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 text-center shadow-xs">
-            <span className="text-[9px] text-slate-500 uppercase block font-bold tracking-wider">Collections</span>
-            <p className="text-xs font-black text-emerald-400 mt-1">{renderAmountValue(metrics.recentCollections)}</p>
-          </div>
-        </div>
-
-        {/* --- CUSTOMERS INTERACTIVE BOOK (TAP TO SEE DOCK LOGS) --- */}
-        <section className="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-3">
-            <h3 className="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-2">
-              <Users className="h-4.5 w-4.5 text-amber-500" /> Active Ledger Customer Book
-            </h3>
-            <span className="text-[9px] text-slate-500 font-bold">Tap row to view statements</span>
-          </div>
-
-          <input 
-            type="text" 
-            placeholder="Search custom customer name, phone, city..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800/60 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 text-xs mb-3 placeholder-slate-600"
-          />
-
-          <div className="divide-y divide-slate-800/50 max-h-56 overflow-y-auto pr-1">
-            {filteredBalances.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">No matching customers found.</p>
-            ) : (
-              filteredBalances.map(b => {
-                const cMeta = customers[b.name] || {};
-                return (
-                  <div 
-                    key={b.name}
-                    onClick={() => setSelectedDrilldownCustomer(b.name)}
-                    className="flex justify-between items-center py-3 hover:bg-slate-900/40 rounded-xl px-2 transition-colors cursor-pointer"
-                  >
-                    <div>
-                      <h4 className="font-bold text-xs text-slate-100">{b.name}</h4>
-                      <p className="text-[9px] text-slate-500 mt-0.5 font-medium">{cMeta.city || "meena bazar"} • {cMeta.phone || "N/A"}</p>
-                    </div>
-                    <span className={`font-black text-xs ${b.balance > 0 ? 'text-rose-500' : 'text-emerald-400'}`}>
-                      {renderAmountValue(b.balance)}
-                    </span>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </section>
-
-        {/* --- SCROLLABLE ROLLING RANGE (TOP 10) --- */}
-        <section className="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
+      let html = "";
+      state.dormantCustomersList.forEach(item => {
+        html += `
+          <div class="flex justify-between items-center py-2.5 text-xs">
             <div>
-              <h3 className="font-extrabold text-xs uppercase text-slate-100">Rolling Credit Sales Velocity</h3>
-              <p className="text-[9px] text-slate-500 font-medium">Scrollable Top 10 customer list based on billing activities</p>
+              <h5 class="font-bold text-slate-200">${item.name}</h5>
+              <p class="text-[9px] text-slate-500 mt-0.5 font-medium">
+                Last payment trace: <strong class="text-slate-400">${item.lastPayDate}</strong> (${item.diffDays === 999 ? "Never Billed Pay" : `${item.diffDays} days ago`})
+              </p>
             </div>
-
-            <div className="flex space-x-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800/60">
-              {[7, 30, 90].map(days => (
-                <button
-                  key={days}
-                  onClick={() => setCurrentRange(days)}
-                  className={`text-[9px] px-3 py-1.5 rounded-lg font-black transition ${
-                    currentRange === days ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Last {days}D
-                </button>
-              ))}
+            <div class="text-right">
+              <span class="font-black text-rose-500">${renderAmountValue(item.balance)}</span>
+              <p class="text-[8px] text-slate-500 mt-0.5">Dormant Debt</p>
             </div>
           </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
 
-          <div className="max-h-56 overflow-y-auto pr-1 space-y-2">
-            {rollingTopCustomers.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-8">No billing records for selected rolling range.</p>
-            ) : (
-              rollingTopCustomers.map(([name, amt], idx) => (
-                <div key={name} className="flex justify-between items-center py-2.5 px-3 bg-slate-950/40 rounded-xl border border-slate-800/40 text-xs">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-extrabold text-[9px] text-amber-500">#{idx + 1}</span>
-                    <span className="font-bold text-slate-200">{name}</span>
-                  </div>
-                  <span className="font-extrabold text-slate-100">{renderAmountValue(amt)}</span>
-                </div>
-              ))
-            )}
+    function renderChat() {
+      const container = document.getElementById('chat-messages');
+      let html = "";
+
+      state.aiMessages.forEach(msg => {
+        const isUser = msg.role === 'user';
+        html += `
+          <div class="flex items-start space-x-2.5 max-w-[85%] ${isUser ? 'ml-auto flex-row-reverse space-x-reverse' : ''}">
+            <div class="p-1.5 rounded-lg flex-shrink-0 ${isUser ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-amber-400'}">
+              <i data-lucide="${isUser ? 'user' : 'bot'}" class="h-3.5 w-3.5"></i>
+            </div>
+            <div class="p-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
+              isUser ? 'bg-amber-500 text-slate-950 rounded-tr-none' : 'bg-slate-900 border border-slate-850 text-slate-200 rounded-tl-none'
+            }">
+              ${msg.content}
+            </div>
           </div>
-        </section>
+        `;
+      });
 
-        {/* --- PERFORMANCE CHANNELS (SCROLLABLE TOP 10 PERIODS) --- */}
-        <section className="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
+      if (state.isAiTyping) {
+        html += `
+          <div class="flex items-center space-x-2 text-slate-500 text-xs py-1">
+            <i data-lucide="loader-2" class="h-4 w-4 animate-spin text-amber-500"></i>
+            <span>Gemini is scanning transaction journals...</span>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+
+      // Handle button disabled state
+      const inputEl = document.getElementById('chat-input');
+      const sendBtn = document.getElementById('chat-send-btn');
+      sendBtn.disabled = state.isAiTyping;
+
+      // Autoscroll
+      container.scrollTop = container.scrollHeight;
+      lucide.createIcons();
+    }
+
+    function renderLedgerModal() {
+      const modal = document.getElementById('ledger-modal');
+      const titleEl = document.getElementById('ledger-modal-title');
+      const rowsContainer = document.getElementById('ledger-modal-rows');
+
+      titleEl.innerHTML = `<i data-lucide="file-text" class="h-4.5 w-4.5 text-amber-500"></i> Statement Ledger: ${state.selectedDrilldownCustomer}`;
+      modal.classList.remove('hidden');
+
+      const matches = state.rawTxns.filter(t => t.name === state.selectedDrilldownCustomer);
+      if (matches.length === 0) {
+        rowsContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-8 font-medium">No transactions on record.</p>`;
+        lucide.createIcons();
+        return;
+      }
+
+      let html = "";
+      matches.forEach(t => {
+        const isBill = t.type === 'bill';
+        html += `
+          <div class="bg-slate-950/50 border border-slate-800/60 p-3 rounded-xl flex items-center justify-between text-xs">
             <div>
-              <h3 className="font-extrabold text-xs uppercase text-slate-100">Performance Summarized Periods</h3>
-              <p className="text-[9px] text-slate-500 font-medium">Click on any period to review the Top Customers for that target interval</p>
+              <span class="px-2 py-0.5 rounded-md font-bold text-[8px] uppercase tracking-wide mr-1.5 ${
+                isBill ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
+              }">
+                ${isBill ? 'Bill' : t.type === 'pay' ? 'Pay' : t.type}
+              </span>
+              <span class="text-[10px] text-slate-400 font-semibold">${t.date}</span>
+              <p class="text-[10px] text-slate-500 mt-1 italic font-medium">"${t.remarks || 'Initial Join Entry'}"</p>
             </div>
-
-            <div className="flex space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800/60">
-              {[
-                { key: 'week', label: 'W1-W52 Weeks' },
-                { key: 'month', label: 'Monthly' },
-                { key: 'qtr', label: 'Quarterly' }
-              ].map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => {
-                    setCurrentTab(tab.key);
-                    setSelectedPeriod(null);
-                  }}
-                  className={`text-[9px] px-3 py-1.5 rounded-lg font-black transition ${
-                    currentTab === tab.key ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            <span class="font-black text-slate-100">${renderAmountValue(t.amount)}</span>
           </div>
+        `;
+      });
+      rowsContainer.innerHTML = html;
+      lucide.createIcons();
+    }
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* Top periods list */}
-            <div>
-              <span className="text-[8px] text-slate-500 uppercase block font-bold mb-2 tracking-wider">Top Performance Periods</span>
-              <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-                {topPeriodsList.map(([pKey, amt]) => {
-                  const isSel = pKey === (selectedPeriod || (topPeriodsList[0] ? topPeriodsList[0][0] : null));
-                  return (
-                    <div 
-                      key={pKey}
-                      onClick={() => setSelectedPeriod(pKey)}
-                      className={`flex justify-between items-center p-2.5 rounded-xl text-xs cursor-pointer border transition-all ${
-                        isSel ? 'bg-amber-500/10 border-amber-500/50 text-amber-400' : 'bg-slate-950/40 border-slate-800/40 hover:border-slate-700 text-slate-300'
-                      }`}
-                    >
-                      <span className="font-bold">{pKey}</span>
-                      <span className="font-extrabold">{renderAmountValue(amt)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Top customer billing inside selected performance summary */}
-            <div>
-              <span className="text-[8px] text-slate-500 uppercase block font-bold mb-2 tracking-wider">Top customer billing in chosen period</span>
-              <div className="bg-slate-950/30 border border-slate-800/60 rounded-2xl p-3 h-52 overflow-y-auto space-y-2">
-                {periodTopCustomers.length === 0 ? (
-                  <p className="text-xs text-slate-600 text-center py-10">No records found.</p>
-                ) : (
-                  periodTopCustomers.map(([name, amt], idx) => (
-                    <div key={name} className="flex justify-between items-center text-xs pb-1.5 border-b border-slate-900/60 last:border-none">
-                      <span className="text-slate-300">#{idx + 1} {name}</span>
-                      <span className="font-extrabold text-slate-100">{renderAmountValue(amt)}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-        {/* --- GEOGRAPHIC SALES DISTRIBUTION METRIC --- */}
-        <section className="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
-          <div className="border-b border-slate-800 pb-2 mb-3">
-            <h3 className="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5">
-              <Building className="h-4.5 w-4.5 text-amber-500" /> Geographic Exposure Distribution (Post-14 April)
-            </h3>
-          </div>
-
-          <div className="space-y-3">
-            {Object.entries(metrics.cityDebt).length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">No city sales records available.</p>
-            ) : (
-              Object.entries(metrics.cityDebt)
-                .sort((a,b) => b[1] - a[1])
-                .slice(0, 5)
-                .map(([city, amt]) => {
-                  const pct = metrics.totalDue > 0 ? (amt / metrics.totalDue) * 100 : 0;
-                  return (
-                    <div key={city}>
-                      <div className="flex justify-between text-xs font-semibold mb-1">
-                        <span>{city}</span>
-                        <span className="text-amber-400 font-bold">{renderAmountValue(amt)} ({pct.toFixed(1)}%)</span>
-                      </div>
-                      <div className="bg-slate-950 border border-slate-800/50 rounded-full h-3 overflow-hidden">
-                        <div style={{ background: '#f0c040', width: `${Math.min(pct, 100)}%`, height: '100%', borderRadius: '999px' }} />
-                      </div>
-                    </div>
-                  );
-                })
-            )}
-          </div>
-        </section>
-
-        {/* --- DORMANT HIGH-RISK ACCOUNTS (NO PAYMENTS FROM LAST X WEEKS) --- */}
-        <section className="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
-            <div>
-              <h3 className="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5">
-                <AlertTriangle className="h-4.5 w-4.5 text-rose-500" /> High-Risk Dormant Customer Accounts
-              </h3>
-              <p className="text-[9px] text-slate-500 font-medium">List of accounts with outstandings but no recent payments received</p>
-            </div>
-
-            <div className="flex space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800/60">
-              {[2, 4, 8].map(wks => (
-                <button
-                  key={wks}
-                  onClick={() => setDormantWeeksLimit(wks)}
-                  className={`text-[9px] px-2.5 py-1.5 rounded-lg font-black transition ${
-                    dormantWeeksLimit === wks ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'text-slate-400'
-                  }`}
-                >
-                  No Pay for {wks}+ Wks
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="divide-y divide-slate-800/50 max-h-52 overflow-y-auto pr-1">
-            {dormantCustomersList.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-8">No dormant accounts found for the selected limit.</p>
-            ) : (
-              dormantCustomersList.map(item => (
-                <div key={item.name} className="flex justify-between items-center py-2.5 text-xs">
-                  <div>
-                    <h5 className="font-bold text-slate-200">{item.name}</h5>
-                    <p className="text-[9px] text-slate-500 mt-0.5 font-medium">
-                      Last payment trace: <strong className="text-slate-400">{item.lastPayDate}</strong> ({item.diffDays === 999 ? "Never Billed Pay" : `${item.diffDays} days ago`})
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-black text-rose-500">{renderAmountValue(item.balance)}</span>
-                    <p className="text-[8px] text-slate-500 mt-0.5">Dormant Debt</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        {/* --- INTEGRATED AI ADVISOR --- */}
-        <section className="bg-slate-900/30 border border-slate-800/60 rounded-3xl overflow-hidden shadow-lg">
-          <div className="bg-slate-900/80 px-4 py-3 border-b border-slate-800 flex items-center space-x-2.5">
-            <div className="bg-amber-500/10 p-2 rounded-xl text-amber-500">
-              <Bot className="h-5 w-5 animate-pulse" />
-            </div>
-            <div>
-              <h3 className="font-black text-xs uppercase tracking-wider text-slate-100">Integrated Gemini AI Assistant</h3>
-              <p className="text-[9px] text-slate-500 font-bold">Ask anything about cities, credit aging or specific transaction trends</p>
-            </div>
-          </div>
-
-          {/* Chat Stream */}
-          <div className="max-h-60 overflow-y-auto p-4 space-y-3 bg-slate-950/20">
-            {aiMessages.map((msg, i) => (
-              <div 
-                key={i}
-                className={`flex items-start space-x-2.5 max-w-[85%] ${
-                  msg.role === 'user' ? 'ml-auto flex-row-reverse space-x-reverse' : ''
-                }`}
-              >
-                <div className={`p-1.5 rounded-lg flex-shrink-0 ${
-                  msg.role === 'user' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-amber-400'
-                }`}>
-                  {msg.role === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
-                </div>
-                <div className={`p-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
-                  msg.role === 'user' ? 'bg-amber-500 text-slate-950 rounded-tr-none' : 'bg-slate-900 border border-slate-850 text-slate-200 rounded-tl-none'
-                }`}>
-                  {msg.content}
-                </div>
-              </div>
-            ))}
-            {isAiTyping && (
-              <div className="flex items-center space-x-2 text-slate-500 text-xs py-1">
-                <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
-                <span>Gemini is scanning transaction journals...</span>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* input Box */}
-          <div className="p-3 bg-white/5 border-t border-slate-800/80 flex gap-2">
-            <input 
-              type="text" 
-              value={aiMessageInput}
-              onChange={(e) => setAiMessageInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') sendAiMessage(); }}
-              placeholder="Ask Gemini: 'Write a warning alert for Shingar Kala'"
-              className="bg-slate-950 border border-slate-800/80 rounded-xl px-3.5 py-2.5 flex-1 text-xs outline-none focus:border-amber-500 font-medium text-slate-200"
-            />
-            <button 
-              onClick={sendAiMessage}
-              disabled={!aiMessageInput.trim() || isAiTyping}
-              className="bg-amber-500 text-slate-950 font-bold p-2.5 rounded-xl flex items-center justify-center transition disabled:opacity-40"
-            >
-              <Send className="h-4.5 w-4.5" />
-            </button>
-          </div>
-        </section>
-
-      </main>
-
-      {/* --- DRILLDOWN CUSTOMER STATEMENT LEDGER MODAL --- */}
-      {selectedDrilldownCustomer && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-5 shadow-2xl relative">
-            <button 
-              onClick={() => setSelectedDrilldownCustomer(null)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full border border-slate-800/80"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <h3 className="font-extrabold text-xs uppercase text-slate-100 mb-4 flex items-center gap-1.5">
-              <FileText className="h-4.5 w-4.5 text-amber-500" /> Statement Ledger: {selectedDrilldownCustomer}
-            </h3>
-
-            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-              {rawTxns.filter(t => t.name === selectedDrilldownCustomer).length === 0 ? (
-                <p className="text-xs text-slate-500 text-center py-8 font-medium">No transactions on record.</p>
-              ) : (
-                rawTxns.filter(t => t.name === selectedDrilldownCustomer).map(t => (
-                  <div key={t.id} className="bg-slate-950/50 border border-slate-800/60 p-3 rounded-xl flex items-center justify-between text-xs">
-                    <div>
-                      <span className={`px-2 py-0.5 rounded-md font-bold text-[8px] uppercase tracking-wide mr-1.5 ${
-                        t.type === 'bill' ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
-                      }`}>
-                        {t.type === 'bill' ? 'Bill' : t.type === 'pay' ? 'Pay' : t.type}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-semibold">{t.date}</span>
-                      <p className="text-[10px] text-slate-500 mt-1 italic font-medium">"{t.remarks || 'Initial Join Entry'}"</p>
-                    </div>
-                    <span className="font-black text-slate-100">{renderAmountValue(t.amount)}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- UNLOCK MODE B DECRYPTION MODAL --- */}
-      {showUnlockModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-5 shadow-2xl relative text-center">
-            <button 
-              onClick={() => {
-                setShowUnlockModal(false);
-                setUnlockPassword("");
-                setUnlockError(false);
-              }}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-white"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div className="bg-amber-500/10 p-3 rounded-full border border-amber-500/20 text-amber-500 w-12 h-12 flex items-center justify-center mx-auto mb-3">
-              <Lock className="h-5 w-5" />
-            </div>
-
-            <h4 className="font-extrabold text-sm text-slate-100 mb-1">Enter Secret Code</h4>
-            <p className="text-[10px] text-slate-400 mb-4 font-semibold">Code decrypts raw pricing weights instantly.</p>
-
-            <input 
-              type="password" 
-              placeholder="Enter passcode..."
-              value={unlockPassword}
-              onChange={handlePasswordChange}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 outline-none focus:border-amber-500 text-xs text-center font-bold tracking-widest text-slate-200"
-              autoFocus
-            />
-
-            {unlockError && (
-              <p className="text-[10px] text-rose-500 mt-2 font-bold animate-shake">⚠️ Invalid Code string. Try again.</p>
-            )}
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-}
+    // --- INITIALIZE WINDOW ONLOAD SCRIPT ---
+    window.onload = function() {
+      fetchData();
+    };
+  </script>
+</body>
+</html>
