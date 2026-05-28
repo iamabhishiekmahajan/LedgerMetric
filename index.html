@@ -61,7 +61,25 @@
     <p class="text-xs text-slate-500 max-w-xs leading-relaxed">Connecting safely to Google Sheets backend systems to audit ledgers.</p>
   </div>
 
-  <!-- --- MAIN APPLICATION CONTAINER (Hidden until loaded) --- -->
+  <!-- --- SECURE STARTUP PASSCODE SCREEN --- -->
+  <div id="startup-lock-screen" class="hidden fixed inset-0 z-50 bg-[#040406] flex flex-col items-center justify-center p-6 text-center">
+    <div class="bg-amber-500/10 p-4 rounded-3xl border border-amber-500/20 text-amber-500 mb-4">
+      <i data-lucide="shield-check" class="h-10 w-10 animate-pulse"></i>
+    </div>
+    <h2 class="text-lg font-black text-slate-100 tracking-wide mb-1">Access Authentication</h2>
+    <p class="text-xs text-slate-400 max-w-xs mb-6 font-medium">Please enter your master passcode to decrypt balances and sales accounts.</p>
+    <input 
+      id="startup-passcode-input"
+      type="password" 
+      placeholder="••••"
+      oninput="checkStartupPasscode(this.value)"
+      class="bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-center font-bold text-2xl tracking-widest text-slate-100 outline-none focus:border-amber-500 w-48 mb-3"
+      autofocus
+    />
+    <p id="startup-error-msg" class="hidden text-xs text-rose-500 font-bold animate-shake">⚠️ Invalid passcode. Try again.</p>
+  </div>
+
+  <!-- --- MAIN APPLICATION CONTAINER (Hidden until unlocked) --- -->
   <div id="app-container" class="hidden">
     
     <!-- --- APP BAR --- -->
@@ -78,12 +96,12 @@
         </div>
       </div>
 
-      <!-- HEADER MODE TOGGLES (Simplified - no passcode required!) -->
+      <!-- HEADER MODE TOGGLES (Secure mode is automatically unlocked) -->
       <div class="flex items-center bg-slate-950 p-1.5 rounded-xl border border-slate-800/80">
         <button 
           id="btn-mode-a"
           onclick="setCipherMode('A')"
-          class="text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition"
+          class="text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-slate-400 hover:text-white"
         >
           <i data-lucide="lock" class="h-3 w-3"></i>
           <span>Mode A (Cipher)</span>
@@ -91,7 +109,7 @@
         <button 
           id="btn-mode-b"
           onclick="setCipherMode('B')"
-          class="text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition"
+          class="text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition bg-emerald-500 text-slate-950"
         >
           <i data-lucide="unlock" class="h-3 w-3"></i>
           <span>Mode B (Real)</span>
@@ -103,10 +121,10 @@
     <div class="bg-slate-950 px-4 py-2 border-b border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
       <span class="flex items-center gap-1.5 font-medium">
         <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        Ledger Status: <strong>All-Time Transaction Analysis Loaded</strong>
+        Ledger Status: <strong class="text-emerald-400">All-Time Accounts Authenticated</strong>
       </span>
       <button onclick="fetchData()" class="text-amber-500 flex items-center gap-1 hover:underline font-bold">
-        <i data-lucide="refresh-cw" class="h-3 w-3"></i> Refresh
+        <i data-lucide="refresh-cw" class="h-3 w-3"></i> Refresh Data
       </button>
     </div>
 
@@ -140,7 +158,7 @@
           <div class="w-full bg-slate-950 rounded-full h-1 mt-2 overflow-hidden">
             <div id="cei-progress" class="bg-emerald-400 h-1 rounded-full" style="width: 0%"></div>
           </div>
-          <p class="text-[9px] text-slate-500 mt-1.5">Ratio of actual cash collection to credit billed</p>
+          <p class="text-[9px] text-slate-500 mt-1.5">Ratio of collection post opening balances to sales</p>
         </div>
 
         <div class="bg-slate-900/20 border border-slate-800/50 rounded-2xl p-3.5">
@@ -247,8 +265,9 @@
       <!-- --- GEOGRAPHIC EXPOSURE & CIRCULAR SALES CHART --- -->
       <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
         <div class="border-b border-slate-800 pb-2 mb-4">
-          <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5">
-            <i data-lucide="building" class="h-4.5 w-4.5 text-amber-500"></i> Market Demographics & City Sales Shares
+          <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5 flex-wrap">
+            <i data-lucide="building" class="h-4.5 w-4.5 text-amber-500"></i> Market Demographics & City Sales 
+            <span id="cities-date-range" class="text-[10px] text-slate-500 font-bold tracking-normal italic ml-auto sm:ml-2">...</span>
           </h3>
         </div>
 
@@ -399,13 +418,13 @@
 
   </div>
 
-  <!-- --- JAVASCRIPT RE-IMPLEMENTED LOGIC --- -->
+  <!-- --- JAVASCRIPT LOGIC --- -->
   <script>
     // --- GLOBAL CONFIGURATION ---
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHDEi_3-0oaLvlPqM3tJdDcMLCdOvr3DNRdl-DDOcAJu_oCJrLCrukhRycnN6nBcwY/exec";
     
-    // Note: ANALYSIS_START set to Jan 1, 2000 to process everything from the beginning till today date
-    const ANALYSIS_START = new Date('2000-01-01T00:00:00');
+    // ANALYSIS_START defines metrics isolation. Post-April 14th 2026 (When customers opening balances were entered)
+    const ANALYSIS_START = new Date('2026-04-14T00:00:00');
     
     // Fallback support for local key insertion
     let apiKey = localStorage.getItem('ledgermatric_gemini_key') || "";
@@ -420,14 +439,14 @@
     // --- APPLICATION STATE ---
     const state = {
       isLoading: true,
+      isUnlocked: false,
       loaderText: "Fetching Cloud Ledger...",
       rawTxns: [],
       filteredTxns: [],
       customers: {},
       globalBalances: [],
       searchQuery: "",
-      currentMode: 'B', // Defaults directly to real mode. (Passcode request completely removed)
-      showUnlockModal: false,
+      currentMode: 'B', // Real Mode Active (Toggles are secure from start)
       selectedDrilldownCustomer: null,
       dormantWeeksLimit: 4,
       dormantCustomersList: [],
@@ -481,10 +500,26 @@
       return "₹" + Math.round(val).toLocaleString('en-IN');
     };
 
-    // --- ACTIONS AND DECRYPTION CONTROLS ---
+    // --- ENCRYPTION CONTROLS ---
     function setCipherMode(mode) {
       state.currentMode = mode;
       render();
+    }
+
+    // --- SECURE STARTUP PASSCODE CHECK ---
+    function checkStartupPasscode(val) {
+      if (val.trim().toLowerCase() === "code") {
+        state.isUnlocked = true;
+        document.getElementById('startup-lock-screen').classList.add('hidden');
+        document.getElementById('app-container').classList.remove('hidden');
+        document.getElementById('startup-passcode-input').value = "";
+        document.getElementById('startup-error-msg').classList.add('hidden');
+        render();
+      } else if (val.trim().length >= 4) {
+        document.getElementById('startup-error-msg').classList.remove('hidden');
+      } else {
+        document.getElementById('startup-error-msg').classList.add('hidden');
+      }
     }
 
     // --- FETCH DATA (WITH AUTOMATIC MOCK FALLBACK) ---
@@ -579,6 +614,14 @@
       } finally {
         setTimeout(() => {
           state.isLoading = false;
+          // SHOW SECURITY SCREEN INSTANTLY AFTER LOAD
+          document.getElementById('loader-screen').classList.add('hidden');
+          if (!state.isUnlocked) {
+            document.getElementById('startup-lock-screen').classList.remove('hidden');
+            document.getElementById('startup-passcode-input').focus();
+          } else {
+            document.getElementById('app-container').classList.remove('hidden');
+          }
           render();
         }, 500);
       }
@@ -596,7 +639,7 @@
       
       state.rawTxns = txs;
 
-      // Filter based on start date till today date (Analysis start set to year 2000 to grab everything)
+      // Filter based on 14th April 2026 to start periodic calculations
       const filtered = txs.filter(t => t.parsedDate >= ANALYSIS_START);
       state.filteredTxns = filtered;
 
@@ -612,6 +655,7 @@
       const computedBalances = [];
 
       Object.keys(custMap).forEach(name => {
+        // Outstanding calculations check all-time records to make sure we don't drop past balances
         const cTxnsAll = txs.filter(t => t.name === name);
         const salesAll = cTxnsAll.filter(t => t.type === 'bill').reduce((s, t) => s + Number(t.amount || 0), 0);
         const paysAll = cTxnsAll.filter(t => t.type === 'pay').reduce((s, t) => s + Number(t.amount || 0), 0);
@@ -623,6 +667,7 @@
           totalDueSum += finalBal;
         }
 
+        // Periodic credit metrics (Post-14th April 2026)
         const cTxnsFiltered = filtered.filter(t => t.name === name);
         const fSales = cTxnsFiltered.filter(t => t.type === 'bill').reduce((s, t) => s + Number(t.amount || 0), 0);
         const fPays = cTxnsFiltered.filter(t => t.type === 'pay').reduce((s, t) => s + Number(t.amount || 0), 0);
@@ -657,10 +702,10 @@
       computedBalances.sort((a,b) => b.balance - a.balance);
       state.globalBalances = computedBalances;
 
-      // 1. CEI calculation
+      // Collection Efficiency Index (Post-April 14th)
       const ceiValue = totalSalesSum > 0 ? (collectionsSum / totalSalesSum) * 100 : 0;
 
-      // 2. DSO calculation: Days Sales Outstanding (Outstanding Balance / Credit Sales) * 365 days
+      // DSO: Uses overall outstanding balance compared against periodic billing activities
       const dsoValue = totalSalesSum > 0 ? (totalDueSum / totalSalesSum) * 365 : 0;
 
       state.metrics = {
@@ -677,7 +722,7 @@
         citySales: citySalesMap
       };
 
-      // Recalculate derivative modules
+      // Recalculate modules
       updateDormantList();
       updateRollingRangeTopCustomers();
       updatePerformanceTabState();
@@ -846,7 +891,7 @@
         recognition = new window.SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = false;
-        recognition.lang = 'en-IN'; // Optimized for Indian English / regional pronunciation
+        recognition.lang = 'en-IN'; // Indian English / Regional speech patterns
 
         recognition.onstart = () => {
           isRecordingVoice = true;
@@ -1071,6 +1116,7 @@
       state.isAiTyping = true;
       renderChat();
 
+      // Gemini has access to all-time database sheet metrics starting from absolute start (Jan 1, 2000)
       const contextData = {
         global_metrics: {
           total_due: state.metrics.totalDue,
@@ -1085,16 +1131,20 @@
           balance: b.balance,
           city: state.customers[b.name]?.city || "Jalandhar"
         })),
-        recent_transactions: state.filteredTxns.slice(0, 30).map(t => ({
+        all_time_transactions: state.rawTxns.map(t => ({
           name: t.name,
           amount: t.amount,
           date: t.date,
-          type: t.type
+          type: t.type,
+          remarks: t.remarks
         }))
       };
 
       const systemPrompt = `You are LedgerMetric's Financial Advisor.
-You have access to real-time sheet transactions. Answer clearly, concisely, and with accurate calculations.
+You have access to all real-time transaction logs from the absolute starting date of the business till today. 
+Answer queries clearly, concisely, and with accurate calculations.
+
+Note: Opening balances were recorded as starting journals on 14-Apr-2026. Keep this milestone in mind when discussing performance.
 
 CIPHER CODE MATRIX ("kanpurcity"):
 k-1, a-2, n-3, p-4, u-5, r-6, c-7, i-8, t-9, y-0. (Translate if requested to decode values).
@@ -1130,18 +1180,16 @@ ${JSON.stringify(contextData, null, 2)}`;
 
     // --- CENTRAL RENDERING ENGINE ---
     function render() {
-      // 1. App Level loaders
-      if (state.isLoading) {
-        document.getElementById('loader-screen').classList.remove('hidden');
-        document.getElementById('loader-text').innerText = state.loaderText;
+      if (state.isLoading) return; // Keep loader running
+
+      // 1. Unlocked check
+      if (!state.isUnlocked) {
+        document.getElementById('startup-lock-screen').classList.remove('hidden');
         document.getElementById('app-container').classList.add('hidden');
         return;
-      } else {
-        document.getElementById('loader-screen').classList.add('hidden');
-        document.getElementById('app-container').classList.remove('hidden');
       }
 
-      // 2. Mode Toggle Classes
+      // 2. Mode Toggle button paint
       const modeABtn = document.getElementById('btn-mode-a');
       const modeBBtn = document.getElementById('btn-mode-b');
 
@@ -1153,50 +1201,28 @@ ${JSON.stringify(contextData, null, 2)}`;
         modeBBtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition bg-emerald-500 text-slate-950";
       }
 
-      // 3. Render Header Actions status (Guard added to handle custom HTML changes safely)
-      const actionContainer = document.getElementById('header-action-container');
-      if (actionContainer) {
-        if (state.currentMode === 'A') {
-          actionContainer.innerHTML = `
-            <button 
-              onclick="setCipherMode('B')" 
-              class="text-xs bg-slate-950 hover:bg-slate-900 border border-slate-800/80 px-3 py-1.5 rounded-xl text-slate-300 font-bold flex items-center gap-1.5 transition"
-            >
-              <i data-lucide="lock" class="h-3.5 w-3.5 text-amber-500"></i>
-              <span>Unlock Real Values</span>
-            </button>
-          `;
-        } else {
-          actionContainer.innerHTML = `
-            <button 
-              onclick="setCipherMode('A')" 
-              class="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-emerald-400 font-bold flex items-center gap-1.5 transition"
-            >
-              <i data-lucide="unlock" class="h-3.5 w-3.5 text-emerald-500 animate-pulse"></i>
-              <span>Real Values Unlocked</span>
-            </button>
-          `;
-        }
-      }
-
-      // 4. Fill main numerical KPIs
+      // 3. Render main numeric KPI highlights
       document.getElementById('kpi-market-due').innerText = renderAmountValue(state.metrics.totalDue);
       document.getElementById('kpi-total-sales').innerText = renderAmountValue(state.metrics.totalSales);
       document.getElementById('kpi-collections').innerText = renderAmountValue(state.metrics.recentCollections);
 
-      // 5. Build dynamic 3-metric highlights
+      // 4. Advanced credit metrics progress sliders
       document.getElementById('metric-cei').innerText = state.metrics.cei.toFixed(1) + "%";
       document.getElementById('cei-progress').style.width = Math.min(state.metrics.cei, 100) + "%";
 
       document.getElementById('metric-dso').innerText = Math.round(state.metrics.dso) + " Days";
-      // Cap at 180 days for progress bar visuals
       const dsoProgressPct = (state.metrics.dso / 180) * 100;
       document.getElementById('dso-progress').style.width = Math.min(dsoProgressPct, 100) + "%";
 
       document.getElementById('metric-risk').innerText = state.metrics.riskPercent.toFixed(1) + "%";
       document.getElementById('risk-progress').style.width = Math.min(state.metrics.riskPercent, 100) + "%";
 
-      // 6. Build Child Views
+      // 5. Generate date range context for dynamic demographic section
+      const startStr = "14-Apr-2026";
+      const endStr = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+      document.getElementById('cities-date-range').innerText = `(${startStr} - ${endStr})`;
+
+      // 6. Paint Child Directories and chart graphics
       renderCustomersBook();
       renderRollingList();
       renderPerformanceTab();
@@ -1204,11 +1230,11 @@ ${JSON.stringify(contextData, null, 2)}`;
       renderDormantList();
       renderChat();
 
-      // Trigger Lucide to recreate changed layout icons
+      // Trigger Lucide element parsing
       lucide.createIcons();
     }
 
-    // --- SECTION CONTROLLERS ---
+    // --- SECTION DIRECTORY BUILDERS ---
 
     function renderCustomersBook() {
       const filteredBalances = state.globalBalances.filter(b => 
@@ -1246,7 +1272,6 @@ ${JSON.stringify(contextData, null, 2)}`;
     }
 
     function renderRollingList() {
-      // Toggle button highlights
       [7, 30, 90].forEach(d => {
         const btn = document.getElementById(`range-btn-${d}`);
         if (state.currentRange === d) {
@@ -1278,7 +1303,6 @@ ${JSON.stringify(contextData, null, 2)}`;
     }
 
     function renderPerformanceTab() {
-      // Highlight selection tabs
       ['week', 'month', 'qtr'].forEach(t => {
         const btn = document.getElementById(`perf-tab-${t}`);
         if (state.currentTab === t) {
@@ -1288,7 +1312,6 @@ ${JSON.stringify(contextData, null, 2)}`;
         }
       });
 
-      // Left column: Top Performance Periods
       const periodsContainer = document.getElementById('perf-periods-list');
       let periodsHtml = "";
       const currentSelected = state.selectedPeriod || (state.topPeriodsList[0] ? state.topPeriodsList[0][0] : null);
@@ -1309,7 +1332,6 @@ ${JSON.stringify(contextData, null, 2)}`;
       });
       periodsContainer.innerHTML = periodsHtml;
 
-      // Right column: Selected period details
       const customersContainer = document.getElementById('perf-top-customers');
       if (state.periodTopCustomers.length === 0) {
         customersContainer.innerHTML = `<p class="text-xs text-slate-600 text-center py-10">No records found.</p>`;
@@ -1337,7 +1359,6 @@ ${JSON.stringify(contextData, null, 2)}`;
         return;
       }
 
-      // Build text distribution listing
       let html = "";
       sortedCities.forEach(([city, amt]) => {
         const totalSales = state.metrics.totalSales;
@@ -1356,7 +1377,7 @@ ${JSON.stringify(contextData, null, 2)}`;
       });
       container.innerHTML = html;
 
-      // Update Circular Chart.js Doughnut Graph
+      // Update circular sales share distribution doughnut chart
       const labels = sortedCities.map(c => c[0]);
       const dataValues = sortedCities.map(c => Math.round(c[1]));
 
@@ -1389,7 +1410,7 @@ ${JSON.stringify(contextData, null, 2)}`;
             maintainAspectRatio: false,
             plugins: {
               legend: {
-                display: false // Text block alongside provides detailed metrics legibly
+                display: false
               },
               tooltip: {
                 callbacks: {
@@ -1406,7 +1427,6 @@ ${JSON.stringify(contextData, null, 2)}`;
     }
 
     function renderDormantList() {
-      // Toggle button highlights
       [2, 4, 8].forEach(w => {
         const btn = document.getElementById(`dormant-btn-${w}`);
         if (state.dormantWeeksLimit === w) {
@@ -1473,12 +1493,9 @@ ${JSON.stringify(contextData, null, 2)}`;
 
       container.innerHTML = html;
 
-      // Handle button disabled state
-      const inputEl = document.getElementById('chat-input');
       const sendBtn = document.getElementById('chat-send-btn');
       sendBtn.disabled = state.isAiTyping;
 
-      // Autoscroll
       container.scrollTop = container.scrollHeight;
       lucide.createIcons();
     }
