@@ -508,14 +508,14 @@
 
     // --- SECURE STARTUP PASSCODE CHECK ---
     function checkStartupPasscode(val) {
-      if (val.trim().toLowerCase() === "code") {
+      if (val.trim().toLowerCase() === "ab") {
         state.isUnlocked = true;
         document.getElementById('startup-lock-screen').classList.add('hidden');
         document.getElementById('app-container').classList.remove('hidden');
         document.getElementById('startup-passcode-input').value = "";
         document.getElementById('startup-error-msg').classList.add('hidden');
         render();
-      } else if (val.trim().length >= 4) {
+      } else if (val.trim().length >= 2) {
         document.getElementById('startup-error-msg').classList.remove('hidden');
       } else {
         document.getElementById('startup-error-msg').classList.add('hidden');
@@ -1154,7 +1154,7 @@ ${JSON.stringify(contextData, null, 2)}`;
 
       try {
         const queryKey = apiKey || "";
-        const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${queryKey}`;
+        const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${queryKey}`;
         const payload = {
           contents: [{ role: "user", parts: [{ text: userText }] }],
           systemInstruction: { parts: [{ text: systemPrompt }] }
