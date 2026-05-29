@@ -1,9 +1,9 @@
-```html
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>LedgerMetric Pro AI</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -24,486 +24,402 @@
     }
     /* Mobile premium custom scrollbars */
     ::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+      width: 4px;
+      height: 4px;
     }
     ::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.2);
+      background: rgba(15, 23, 42, 0.1);
     }
     ::-webkit-scrollbar-thumb {
       background: rgba(245, 158, 11, 0.15);
       border-radius: 999px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: rgba(245, 158, 11, 0.35);
-    }
-    @keyframes pulse-red {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.1); opacity: 0.7; }
-    }
-    .mic-recording {
-      animation: pulse-red 1.2s infinite;
-      background-color: #ef4444 !important;
-      color: white !important;
+      background: rgba(245, 158, 11, 0.3);
     }
   </style>
 </head>
-<body class="min-h-screen pb-24">
+<body class="h-screen flex flex-col overflow-hidden bg-[#040406]">
 
   <!-- --- LOADING SPLASH SCREEN --- -->
   <div id="loader-screen" class="fixed inset-0 z-50 bg-[#040406] flex flex-col items-center justify-center p-6 text-center">
-    <div class="bg-amber-500/10 p-4 rounded-2xl border border-amber-500/20 text-amber-500 mb-4 animate-bounce">
-      <i data-lucide="trending-up" class="h-8 w-8"></i>
+    <div class="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/20 text-amber-500 mb-3 animate-bounce">
+      <i data-lucide="trending-up" class="h-7 w-7"></i>
     </div>
-    <div class="flex items-center space-x-2.5 text-slate-200 font-bold mb-2">
-      <i data-lucide="loader-2" class="h-5 w-5 animate-spin text-amber-500"></i>
-      <span id="loader-text">Loading Cloud Ledger Database...</span>
+    <div class="flex items-center space-x-2 text-slate-200 font-bold mb-1.5">
+      <i data-lucide="loader-2" class="h-4 w-4 animate-spin text-amber-500"></i>
+      <span id="loader-text" class="text-xs">Loading Cloud Ledger Database...</span>
     </div>
-    <p class="text-xs text-slate-500 max-w-xs leading-relaxed">Processing client records and active ledger balances securely...</p>
+    <p class="text-[10px] text-slate-500 max-w-xs leading-relaxed">Processing client records and active ledger balances securely...</p>
   </div>
 
   <!-- --- SECURE STARTUP PASSCODE SCREEN (NO TOGGLES) --- -->
   <div id="startup-lock-screen" class="hidden fixed inset-0 z-50 bg-[#040406] flex flex-col items-center justify-center p-6 text-center">
-    <div class="bg-amber-500/10 p-4 rounded-3xl border border-amber-500/20 text-amber-500 mb-4">
-      <i data-lucide="shield-check" class="h-10 w-10 animate-pulse"></i>
+    <div class="bg-amber-500/10 p-3.5 rounded-3xl border border-amber-500/20 text-amber-500 mb-3">
+      <i data-lucide="shield-check" class="h-8 w-8 animate-pulse"></i>
     </div>
-    <h2 class="text-lg font-black text-slate-100 tracking-wide mb-1">Access Authentication</h2>
-    <p class="text-xs text-slate-400 max-w-xs mb-6 font-medium">Please enter your master passcode to decrypt balances and sales accounts.</p>
+    <h2 class="text-base font-black text-slate-100 tracking-wide mb-0.5">Access Authentication</h2>
+    <p class="text-[10px] text-slate-400 max-w-xs mb-4 font-medium">Please enter your master passcode to decrypt balances and sales accounts.</p>
     <input 
       id="startup-passcode-input"
       type="password" 
       placeholder="••••"
       oninput="checkStartupPasscode(this.value)"
-      class="bg-slate-950 border border-slate-800 rounded-2xl px-5 py-4 text-center font-bold text-2xl tracking-widest text-slate-100 outline-none focus:border-amber-500 w-48 mb-3"
+      class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center font-bold text-xl tracking-widest text-slate-100 outline-none focus:border-amber-500 w-40 mb-2.5"
       autofocus
     />
-    <p id="startup-error-msg" class="hidden text-xs text-rose-500 font-bold animate-shake">⚠️ Invalid passcode. Try again.</p>
+    <p id="startup-error-msg" class="hidden text-[10px] text-rose-500 font-bold animate-shake">⚠️ Invalid passcode. Try again.</p>
   </div>
 
   <!-- --- MAIN APPLICATION CONTAINER (Hidden until unlocked) --- -->
-  <div id="app-container" class="hidden">
+  <div id="app-container" class="hidden h-full flex flex-col overflow-hidden">
     
     <!-- --- APP BAR --- -->
-    <header class="bg-slate-900/80 border-b border-slate-800 sticky top-0 z-40 px-4 py-3 backdrop-blur-md flex items-center justify-between">
-      <div class="flex items-center space-x-2">
-        <div class="bg-amber-500/10 p-2 rounded-xl border border-amber-500/20 text-amber-500">
-          <i data-lucide="trending-up" class="h-5 w-5"></i>
+    <header class="bg-slate-900/80 border-b border-slate-800/85 px-3 py-2 backdrop-blur-md flex items-center justify-between shrink-0">
+      <div class="flex items-center space-x-1.5">
+        <div class="bg-amber-500/10 p-1.5 rounded-lg border border-amber-500/20 text-amber-500">
+          <i data-lucide="trending-up" class="h-4 w-4"></i>
         </div>
         <div>
-          <h1 class="text-sm font-black tracking-wide text-slate-100 flex items-center gap-1.5">
-            LedgerMetric <span class="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-md font-bold">Pro AI</span>
+          <h1 class="text-xs font-black tracking-wide text-slate-100 flex items-center gap-1">
+            LedgerMetric <span class="text-[8px] bg-amber-500/20 text-amber-400 px-1 py-0.2 rounded font-bold">Pro AI</span>
           </h1>
-          <p class="text-[9px] text-slate-500">Real-time Cloud Ledger</p>
+          <p class="text-[8px] text-slate-500">Real-time Cloud Ledger</p>
         </div>
       </div>
 
       <!-- HEADER MODE INDICATOR -->
-      <div class="flex items-center space-x-2">
+      <div>
         <button 
           id="btn-mode-toggle"
           onclick="toggleCipherMode()"
-          class="text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
+          class="text-[9px] font-bold px-2.5 py-1 rounded-md flex items-center space-x-1 transition bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
         >
-          <i data-lucide="unlock" class="h-3 w-3"></i>
-          <span id="mode-text">Mode B (Real Values)</span>
+          <i data-lucide="unlock" class="h-2.5 w-2.5"></i>
+          <span id="mode-text">Mode B (Real)</span>
         </button>
       </div>
     </header>
 
     <!-- --- NOTIFICATION RIBBON --- -->
-    <div class="bg-slate-950 px-4 py-2 border-b border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
-      <span class="flex items-center gap-1.5 font-medium">
-        <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        Ledger Milestone: <strong class="text-emerald-400">Post-14 April 2026 Analytical Metrics Active</strong>
+    <div class="bg-slate-950 px-3 py-1.5 border-b border-slate-800/60 text-[9px] text-slate-400 flex items-center justify-between shrink-0">
+      <span class="flex items-center gap-1 font-medium">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        Ledger Milestone: <strong class="text-emerald-400 font-bold text-[8px]">Post-14 April 2026 Metrics Active</strong>
       </span>
-      <button onclick="fetchData()" class="text-amber-500 flex items-center gap-1 hover:underline font-bold">
-        <i data-lucide="refresh-cw" class="h-3 w-3"></i> Refresh Data
+      <button onclick="fetchData()" class="text-amber-500 flex items-center gap-0.5 hover:underline font-bold text-[8px]">
+        <i data-lucide="refresh-cw" class="h-2.5 w-2.5"></i> Refresh Data
       </button>
     </div>
 
-    <!-- --- MAIN CONTENT GRID --- -->
-    <main class="max-w-4xl mx-auto p-3 space-y-4">
-
-      <!-- --- MAIN KPI BLOCKS --- -->
-      <div class="grid grid-cols-3 gap-2">
-        <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-2.5 text-center shadow-xs">
-          <span class="text-[8px] text-slate-500 uppercase block font-bold tracking-wider">Market Due</span>
-          <p id="kpi-market-due" class="text-xs font-black text-rose-500 mt-1">...</p>
-        </div>
-        <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-2.5 text-center shadow-xs">
-          <span class="text-[8px] text-slate-500 uppercase block font-bold tracking-wider">Total Sales</span>
-          <p id="kpi-total-sales" class="text-xs font-black text-amber-500 mt-1">...</p>
-        </div>
-        <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-2.5 text-center shadow-xs">
-          <span class="text-[8px] text-slate-500 uppercase block font-bold tracking-wider">Collections</span>
-          <p id="kpi-collections" class="text-xs font-black text-emerald-400 mt-1">...</p>
-        </div>
-      </div>
-
-      <!-- --- CUSTOMERS INTERACTIVE BOOK --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
-          <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5">
-            <i data-lucide="users" class="h-4 w-4 text-amber-500"></i> Customer Directory & Financial Health
-          </h3>
-          <span class="text-[9px] text-slate-500 font-bold hidden sm:inline">Tap row to view statements & Export PDF</span>
+    <!-- --- MAIN COCKPIT DASHBOARD (NO SCROLL GRID) --- -->
+    <main class="flex-1 overflow-hidden flex flex-col md:flex-row p-2 gap-2 h-full min-h-0">
+      
+      <!-- COLUMN 1: CUSTOMER DIRECTORY & CORE KPIS -->
+      <div id="col-directory" class="flex flex-col h-full w-full md:w-1/3 space-y-2 min-h-0 overflow-hidden shrink-0">
+        
+        <!-- KPI Mini Blocks -->
+        <div class="grid grid-cols-3 gap-1.5 shrink-0">
+          <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-2 text-center shadow-xs">
+            <span class="text-[7px] text-slate-500 uppercase block font-bold tracking-wider">Market Due</span>
+            <p id="kpi-market-due" class="text-[11px] font-black text-rose-500 mt-0.5">...</p>
+          </div>
+          <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-2 text-center shadow-xs">
+            <span class="text-[7px] text-slate-500 uppercase block font-bold tracking-wider">Total Sales</span>
+            <p id="kpi-total-sales" class="text-[11px] font-black text-amber-500 mt-0.5">...</p>
+          </div>
+          <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-2 text-center shadow-xs">
+            <span class="text-[7px] text-slate-500 uppercase block font-bold tracking-wider">Collections</span>
+            <p id="kpi-collections" class="text-[11px] font-black text-emerald-400 mt-0.5">...</p>
+          </div>
         </div>
 
-        <!-- Directory Filter and Sort Controls Bar -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
-          <div class="sm:col-span-2">
+        <!-- Customer Directory Box -->
+        <div class="bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 flex-1 flex flex-col min-h-0 overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-1.5 mb-1.5 shrink-0">
+            <h3 class="font-extrabold text-[9px] uppercase text-slate-100 flex items-center gap-1">
+              <i data-lucide="users" class="h-3 w-3 text-amber-500"></i> Customer Directory
+            </h3>
+            <span class="text-[7px] text-slate-500 font-bold">Tap row for Statement</span>
+          </div>
+
+          <!-- Filter & Sorting Toolbelt -->
+          <div class="flex flex-col gap-1 mb-1.5 shrink-0">
             <input 
               id="customer-search-input"
               type="text" 
-              placeholder="Search customer, location, contact, or segment..."
+              placeholder="Search client, location, contact, or segment..."
               oninput="handleSearchQuery(this.value)"
-              class="w-full bg-slate-950 border border-slate-800/60 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-xs placeholder-slate-600"
+              class="w-full bg-slate-950 border border-slate-800/50 rounded-md px-2 py-1 outline-none focus:border-amber-500 text-[9px] placeholder-slate-600"
             />
-          </div>
-          <div>
-            <div class="flex items-center justify-between sm:justify-end space-x-1.5 bg-slate-950 px-2.5 py-2 rounded-lg border border-slate-800/60 w-full">
-              <label for="customer-sort-select" class="text-[8px] font-black uppercase text-slate-500 whitespace-nowrap">Sort By:</label>
-              <select 
-                id="customer-sort-select" 
-                onchange="setCustomerSort(this.value)"
-                class="bg-transparent text-[10px] font-bold outline-none text-amber-500 cursor-pointer w-full text-right sm:text-left"
-              >
-                <option value="balance" selected>Ledger Balance</option>
-                <option value="clv">CLV Spend</option>
-                <option value="frequency">Tx Frequency</option>
-                <option value="recency">Last Pay (Recency)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div id="customer-list-container" class="divide-y divide-slate-800/40 max-h-72 overflow-y-auto pr-1 space-y-1">
-          <!-- Dynamic injected rows -->
-        </div>
-      </section>
-
-      <!-- --- ROLLING CREDIT SALES VELOCITY (TOP 20 - SCROLLABLE) --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm">
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-800 pb-2 mb-2.5">
-          <div>
-            <h3 class="font-extrabold text-xs uppercase text-slate-100">Rolling Credit Sales Velocity</h3>
-            <p class="text-[8px] text-slate-500 font-medium">Scrollable top 20 active customer ledger billing speeds</p>
-          </div>
-
-          <div class="flex flex-wrap gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800/60 self-start">
-            <button id="range-btn-7" onclick="setRollingRange(7)" class="text-[8px] px-2 py-1 rounded-md font-black transition">7D</button>
-            <button id="range-btn-30" onclick="setRollingRange(30)" class="text-[8px] px-2 py-1 rounded-md font-black transition">30D</button>
-            <button id="range-btn-90" onclick="setRollingRange(90)" class="text-[8px] px-2 py-1 rounded-md font-black transition">90D</button>
-            <button id="range-btn-180" onclick="setRollingRange(180)" class="text-[8px] px-2 py-1 rounded-md font-black transition">180D</button>
-            <button id="range-btn-360" onclick="setRollingRange(360)" class="text-[8px] px-2 py-1 rounded-md font-black transition">360D</button>
-            <button id="range-btn-lifetime" onclick="setRollingRange('lifetime')" class="text-[8px] px-2 py-1 rounded-md font-black transition">Lifetime</button>
-          </div>
-        </div>
-
-        <div id="rolling-list-container" class="max-h-60 overflow-y-auto pr-1 space-y-1.5">
-          <!-- Dynamic rolling top 20 list content -->
-        </div>
-      </section>
-
-      <!-- --- STRATEGIC INSIGHTS (PARETO 80/20 & WEEKLY SEASONALITY) --- -->
-      <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        
-        <!-- Weekly Seasonality Check -->
-        <div class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5 border-b border-slate-800 pb-2 mb-2.5">
-              <i data-lucide="calendar-days" class="h-4 w-4 text-amber-500"></i> Seasonality Check
-            </h3>
-            <p class="text-[8px] text-slate-500 mb-3 font-medium">Comparing total billing transaction volumes by weekdays</p>
-          </div>
-          <div id="seasonality-container" class="space-y-2">
-            <!-- Dynamic weekday progress indicators -->
-          </div>
-        </div>
-
-        <!-- Pareto 80/20 Revenue Impact Analysis -->
-        <div class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5 border-b border-slate-800 pb-2 mb-2.5">
-              <i data-lucide="pie-chart" class="h-4 w-4 text-emerald-500"></i> Pareto Credit Analysis (80/20 Rule)
-            </h3>
-            <p class="text-[8px] text-slate-500 mb-3 font-medium">Identifying the core client segment driving business revenue</p>
-          </div>
-          <div id="pareto-container" class="bg-slate-950/40 border border-slate-800/50 p-3 rounded-xl flex flex-col justify-center h-full">
-            <!-- Dynamic Pareto analysis numbers -->
-          </div>
-        </div>
-      </section>
-
-      <!-- --- PERFORMANCE SUMMARY MODULE --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm">
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
-          <div>
-            <h3 class="font-extrabold text-xs uppercase text-slate-100">Analytical Summarized Audits</h3>
-            <p class="text-[8px] text-slate-500 font-medium">Drill down into periodic metrics. Current timeframe highlighted in orange.</p>
-          </div>
-
-          <!-- Configuration Controls (Optional Year + Tab selector) -->
-          <div class="flex flex-wrap items-center gap-2">
-            <!-- Fiscal Year Selector (Optional) -->
-            <div class="flex items-center space-x-1 bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800/80">
-              <label for="fiscal-year-select" class="text-[8px] font-black uppercase text-slate-500">Year (Optional):</label>
-              <select 
-                id="fiscal-year-select" 
-                onchange="setFiscalYear(this.value)"
-                class="bg-transparent text-[9px] font-black outline-none text-amber-500 cursor-pointer"
-              >
-                <option value="2026" selected>2026</option>
-                <option value="2025">2025</option>
-                <option value="all">All Years (Optional)</option>
-              </select>
-            </div>
-
-            <!-- Tab Selectors -->
-            <div class="flex space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800/60">
-              <button id="perf-tab-days" onclick="setPerformanceTab('days')" class="text-[8px] px-2 py-1 rounded-md font-black transition">Days</button>
-              <button id="perf-tab-week" onclick="setPerformanceTab('week')" class="text-[8px] px-2 py-1 rounded-md font-black transition">ISO Weeks</button>
-              <button id="perf-tab-month" onclick="setPerformanceTab('month')" class="text-[8px] px-2 py-1 rounded-md font-black transition">Monthly</button>
-              <button id="perf-tab-qtr" onclick="setPerformanceTab('qtr')" class="text-[8px] px-2 py-1 rounded-md font-black transition">Quarterly</button>
-              <button id="perf-tab-year" onclick="setPerformanceTab('year')" class="text-[8px] px-2 py-1 rounded-md font-black transition">Yearly</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Left column: periods list -->
-          <div>
-            <span class="text-[8px] text-slate-500 uppercase block font-bold mb-2 tracking-wider">Chronological Ledger Periods</span>
-            <div id="perf-periods-list" class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-              <!-- Dynamic period items -->
-            </div>
-          </div>
-
-          <!-- Right column: selected period top customers (Top 10 Scrollable) -->
-          <div>
-            <span class="text-[8px] text-slate-500 uppercase block font-bold mb-2 tracking-wider">Top Customer Billings (Scrollable Top 10)</span>
-            <div id="perf-top-customers" class="bg-slate-950/30 border border-slate-800/60 rounded-xl p-3 h-60 overflow-y-auto space-y-2">
-              <!-- Injected customer records -->
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- --- GEOGRAPHIC EXPOSURE & CIRCULAR SALES CHART --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm">
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-800 pb-2 mb-4">
-          <div>
-            <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5 flex-wrap">
-              <i data-lucide="building" class="h-4.5 w-4.5 text-amber-500"></i> Market Demographics & City Sales Shares
-              <span id="cities-date-range" class="text-[9px] text-slate-500 font-bold tracking-normal italic">...</span>
-            </h3>
-          </div>
-          
-          <!-- Demographics Filter Controls -->
-          <div class="flex space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800/60 self-start">
-            <button id="demo-filter-month" onclick="setDemographicsFilter('month')" class="text-[8px] px-2.5 py-1 rounded-md font-black transition">This Month</button>
-            <button id="demo-filter-year" onclick="setDemographicsFilter('year')" class="text-[8px] px-2.5 py-1 rounded-md font-black transition">This Year</button>
-            <button id="demo-filter-all" onclick="setDemographicsFilter('all')" class="text-[8px] px-2.5 py-1 rounded-md font-black transition">All-Time</button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-          <!-- Multi-Graph Interface: Sales Doughnut & Sales Trend -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full md:col-span-2">
-            <!-- Sales Share Doughnut -->
-            <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-800/50 flex flex-col items-center">
-              <span class="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-2">City-wise Billing Share</span>
-              <div class="w-40 h-40 relative">
-                <canvas id="cityChartCanvas"></canvas>
+            <div class="flex items-center gap-1.5 w-full">
+              <div class="flex-1 flex items-center justify-between bg-slate-950 px-2 py-1 rounded-md border border-slate-800/50">
+                <label for="customer-sort-select" class="text-[7px] font-black uppercase text-slate-500 whitespace-nowrap">Sort:</label>
+                <select 
+                  id="customer-sort-select" 
+                  onchange="setCustomerSort(this.value)"
+                  class="bg-transparent text-[9px] font-bold outline-none text-amber-500 cursor-pointer text-right w-full font-black"
+                >
+                  <option value="balance" selected>Ledger Balance</option>
+                  <option value="clv">CLV Spend</option>
+                  <option value="frequency">Tx Frequency</option>
+                  <option value="recency">Last Pay (Recency)</option>
+                </select>
               </div>
+              <button 
+                id="btn-sort-order"
+                onclick="toggleSortOrder()"
+                class="bg-slate-950 border border-slate-800/50 p-1 rounded-md text-slate-400 hover:text-amber-500 transition-colors flex items-center justify-center h-full aspect-square"
+              >
+                <i id="sort-order-icon" data-lucide="arrow-down" class="h-3 w-3"></i>
+              </button>
             </div>
-            
-            <!-- Sales vs Collection Trend -->
-            <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-800/50 flex flex-col items-center">
-              <span class="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-2">Monthly Sales vs Collections Trend (2026)</span>
-              <div class="w-full h-40 relative">
-                <canvas id="trendChartCanvas"></canvas>
+          </div>
+
+          <!-- Scrollable Listings -->
+          <div id="customer-list-container" class="flex-1 overflow-y-auto pr-0.5 space-y-1 divide-y divide-slate-800/25 min-h-0">
+            <!-- Dynamic injected rows -->
+          </div>
+        </div>
+
+        <!-- Dashboard Core Ratios (Absolute Bottom) -->
+        <div class="bg-slate-900/20 border border-slate-800/55 rounded-xl p-2 shrink-0 space-y-1.5">
+          <div class="grid grid-cols-3 gap-1.5 text-center">
+            <div>
+              <span class="text-[6px] text-slate-500 font-bold uppercase block tracking-wider font-black">CEI Efficiency</span>
+              <p id="metric-cei" class="text-[10px] font-black text-slate-100">...</p>
+              <div class="w-full bg-slate-950 rounded-full h-1 mt-0.5 overflow-hidden">
+                <div id="cei-progress" class="bg-emerald-400 h-1 rounded-full" style="width: 0%"></div>
               </div>
-            </div>
-          </div>
-
-          <!-- Geographic Bar Distribution -->
-          <div id="city-distribution-container" class="space-y-3 md:col-span-2">
-            <!-- Dynamically filled cities -->
-          </div>
-        </div>
-      </section>
-
-      <!-- --- DORMANT HIGH-RISK CUSTOMER MONITOR --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm">
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-800 pb-3 mb-3">
-          <div>
-            <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5">
-              <i data-lucide="alert-triangle" class="h-4.5 w-4.5 text-rose-500"></i> High-Risk Dormant Customer Accounts
-            </h3>
-            <p class="text-[8px] text-slate-500 font-medium">Clients with unpaid outstanding ledger dues holding no recent payments</p>
-          </div>
-
-          <div class="flex space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800/60 self-start">
-            <button id="dormant-btn-2" onclick="setDormantLimit(2)" class="text-[8px] px-2 py-1 rounded-md font-black transition">No Pay 2+ Wks</button>
-            <button id="dormant-btn-4" onclick="setDormantLimit(4)" class="text-[8px] px-2 py-1 rounded-md font-black transition">No Pay 4+ Wks</button>
-            <button id="dormant-btn-8" onclick="setDormantLimit(8)" class="text-[8px] px-2 py-1 rounded-md font-black transition">No Pay 8+ Wks</button>
-          </div>
-        </div>
-
-        <div id="dormant-list-container" class="divide-y divide-slate-800/40 max-h-52 overflow-y-auto pr-1">
-          <!-- Dynamic dormant customers -->
-        </div>
-      </section>
-
-      <!-- --- CORE CREDIT CONTROL METRICS (CEI, DSO, AND RISK PERCENT) - ABSOLUTE BOTTOM --- -->
-      <section class="bg-slate-900/10 border border-slate-800/40 rounded-2xl p-3 shadow-inner">
-        <div class="text-center mb-3">
-          <span class="text-[8px] text-slate-500 font-bold uppercase tracking-widest block">Executive Summary Indicator Panel</span>
-          <h4 class="text-[10px] font-black text-slate-300 uppercase tracking-wider mt-0.5">Core Financial Health Metrics</h4>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-3 flex flex-col justify-between">
-            <div class="flex items-center justify-between">
-              <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Collection Efficiency (CEI)</span>
-              <i data-lucide="percent" class="h-3.5 w-3.5 text-emerald-400"></i>
-            </div>
-            <p id="metric-cei" class="text-base font-black text-slate-100 mt-1">...</p>
-            <div class="w-full bg-slate-950 rounded-full h-1 mt-1.5 overflow-hidden">
-              <div id="cei-progress" class="bg-emerald-400 h-1 rounded-full" style="width: 0%"></div>
-            </div>
-            <p class="text-[8px] text-slate-500 mt-1">Collected funds relative to credit sales since opening</p>
-          </div>
-
-          <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-3 flex flex-col justify-between">
-            <div class="flex items-center justify-between">
-              <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Collection Cycle (DSO)</span>
-              <i data-lucide="clock" class="h-3.5 w-3.5 text-amber-400"></i>
-            </div>
-            <p id="metric-dso" class="text-base font-black text-slate-100 mt-1">...</p>
-            <div class="w-full bg-slate-950 rounded-full h-1 mt-1.5 overflow-hidden">
-              <div id="dso-progress" class="bg-amber-400 h-1 rounded-full" style="width: 0%"></div>
-            </div>
-            <p class="text-[8px] text-slate-500 mt-1">Estimated average duration of outstanding accounts receivable</p>
-          </div>
-
-          <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-3 flex flex-col justify-between">
-            <div class="flex items-center justify-between">
-              <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Portfolio Risk Rate</span>
-              <i data-lucide="shield-alert" class="h-3.5 w-3.5 text-rose-400"></i>
-            </div>
-            <p id="metric-risk" class="text-base font-black text-slate-100 mt-1">...</p>
-            <div class="w-full bg-slate-950 rounded-full h-1 mt-1.5 overflow-hidden">
-              <div id="risk-progress" class="bg-rose-500 h-1 rounded-full" style="width: 0%"></div>
-            </div>
-            <p class="text-[8px] text-slate-500 mt-1">Total outstandings tied down in dormant portfolios</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- --- INTEGRATED GEMINI AI ADVISOR --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl overflow-hidden shadow-lg mt-2">
-        <div class="bg-slate-900/80 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-          <div class="flex items-center space-x-2.5">
-            <div class="bg-amber-500/10 p-2 rounded-xl text-amber-500">
-              <i data-lucide="bot" class="h-5 w-5 animate-pulse"></i>
             </div>
             <div>
-              <h3 class="font-black text-xs uppercase tracking-wider text-slate-100">Integrated Gemini AI Assistant</h3>
-              <p class="text-[9px] text-slate-500 font-bold">Ask anything about cities, credit aging or specific transaction trends</p>
+              <span class="text-[6px] text-slate-500 font-bold uppercase block tracking-wider font-black">Collection DSO</span>
+              <p id="metric-dso" class="text-[10px] font-black text-slate-100">...</p>
+              <div class="w-full bg-slate-950 rounded-full h-1 mt-0.5 overflow-hidden">
+                <div id="dso-progress" class="bg-amber-400 h-1 rounded-full" style="width: 0%"></div>
+              </div>
+            </div>
+            <div>
+              <span class="text-[6px] text-slate-500 font-bold uppercase block tracking-wider font-black">Risk Portfolio</span>
+              <p id="metric-risk" class="text-[10px] font-black text-slate-100">...</p>
+              <div class="w-full bg-slate-950 rounded-full h-1 mt-0.5 overflow-hidden">
+                <div id="risk-progress" class="bg-rose-500 h-1 rounded-full" style="width: 0%"></div>
+              </div>
             </div>
           </div>
-          <!-- API Key Keypad Toggle -->
-          <button id="api-key-config-btn" onclick="toggleApiKeyInput()" class="text-[9px] bg-slate-800 hover:bg-slate-700 hover:text-white px-2.5 py-1 rounded-lg border border-slate-700 text-slate-300 font-bold flex items-center gap-1 transition">
-            <i data-lucide="key" class="h-3 w-3"></i> Set API Key
-          </button>
         </div>
 
-        <!-- Optional custom API Key drawer -->
-        <div id="api-key-panel" class="hidden bg-slate-950 p-3 border-b border-slate-800/80 text-xs">
-          <p class="text-[10px] text-slate-400 mb-2 font-medium">To talk to the AI on GitHub Pages, input your Gemini API Key below. (Key remains completely in your local browser state)</p>
-          <div class="flex gap-2">
-            <input id="custom-api-key-input" type="password" placeholder="AIzaSy..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 flex-1 text-xs outline-none focus:border-amber-500 text-slate-200" />
-            <button onclick="saveApiKey()" class="bg-amber-500 text-slate-950 font-bold px-4 py-1.5 rounded-lg text-xs hover:bg-amber-400">Save</button>
+      </div>
+
+      <!-- COLUMN 2: VELOCITY & DORMANT RISKS -->
+      <div id="col-insights" class="hidden md:flex flex-col h-full w-full md:w-1/3 space-y-2 min-h-0 overflow-hidden shrink-0">
+        
+        <!-- Rolling velocity list (Top 20 Scrollable) -->
+        <div class="bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 flex-1 flex flex-col min-h-0 overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-1 mb-1.5 shrink-0 flex-wrap gap-1">
+            <div>
+              <h3 class="font-extrabold text-[9px] uppercase text-slate-100">Credit Velocity</h3>
+              <p class="text-[6px] text-slate-500 font-medium">Top 20 customer billing speeds</p>
+            </div>
+            <div class="flex flex-wrap gap-0.5 bg-slate-950 p-0.5 rounded border border-slate-800/60">
+              <button id="range-btn-7" onclick="setRollingRange(7)" class="text-[7px] px-1 py-0.2 rounded font-black transition">7D</button>
+              <button id="range-btn-30" onclick="setRollingRange(30)" class="text-[7px] px-1 py-0.2 rounded font-black transition">30D</button>
+              <button id="range-btn-90" onclick="setRollingRange(90)" class="text-[7px] px-1 py-0.2 rounded font-black transition">90D</button>
+              <button id="range-btn-180" onclick="setRollingRange(180)" class="text-[7px] px-1 py-0.2 rounded font-black transition">180D</button>
+              <button id="range-btn-360" onclick="setRollingRange(360)" class="text-[7px] px-1 py-0.2 rounded font-black transition">360D</button>
+              <button id="range-btn-lifetime" onclick="setRollingRange('lifetime')" class="text-[7px] px-1.5 py-0.2 rounded font-black transition">Life</button>
+            </div>
+          </div>
+
+          <div id="rolling-list-container" class="flex-1 overflow-y-auto pr-0.5 space-y-1 min-h-0">
+            <!-- Injected top 20 velocity list -->
           </div>
         </div>
 
-        <!-- Chat messages area -->
-        <div id="chat-messages" class="max-h-60 overflow-y-auto p-4 space-y-3 bg-slate-950/20">
-          <!-- Dynamic chat transcripts -->
+        <!-- Dormant Accounts List Box -->
+        <div class="bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 flex-1 flex flex-col min-h-0 overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-1 mb-1.5 shrink-0 flex-wrap gap-1">
+            <div>
+              <h3 class="font-extrabold text-[9px] uppercase text-slate-100">High-Risk Dormancy</h3>
+              <p class="text-[6px] text-rose-400 font-bold">Outstanding dues without payment trace</p>
+            </div>
+            <div class="flex bg-slate-950 p-0.5 rounded border border-slate-800/60 self-start">
+              <button id="dormant-btn-2" onclick="setDormantLimit(2)" class="text-[7px] px-2 py-0.5 rounded font-black transition">2W+</button>
+              <button id="dormant-btn-4" onclick="setDormantLimit(4)" class="text-[7px] px-2 py-0.5 rounded font-black transition">4W+</button>
+              <button id="dormant-btn-8" onclick="setDormantLimit(8)" class="text-[7px] px-2 py-0.5 rounded font-black transition">8W+</button>
+            </div>
+          </div>
+
+          <div id="dormant-list-container" class="flex-1 overflow-y-auto pr-0.5 space-y-1 min-h-0">
+            <!-- Injected dormant list -->
+          </div>
         </div>
 
-        <!-- Chat input bar with Voice Dictation (Mic) -->
-        <div class="p-3 bg-white/5 border-t border-slate-800/80 flex gap-2">
-          <input 
-            id="chat-input"
-            type="text" 
-            onkeydown="if(event.key === 'Enter') dispatchAiMessage();"
-            placeholder="Ask Gemini: 'Write a warning alert for Shingar Kala'"
-            class="bg-slate-950 border border-slate-800/80 rounded-xl px-3.5 py-2.5 flex-1 text-xs outline-none focus:border-amber-500 font-medium text-slate-200"
-          />
-          
-          <!-- Mic Speak Trigger -->
-          <button 
-            id="mic-btn"
-            onclick="toggleVoiceRecognition()"
-            class="bg-slate-800 border border-slate-700/85 hover:bg-slate-700 text-slate-300 font-bold px-3 rounded-xl flex items-center justify-center transition"
-            title="Speak Prompt"
-          >
-            <i id="mic-icon" data-lucide="mic" class="h-4 w-4"></i>
-          </button>
+      </div>
 
-          <button 
-            id="chat-send-btn"
-            onclick="dispatchAiMessage()"
-            class="bg-amber-500 text-slate-950 font-bold p-2.5 rounded-xl flex items-center justify-center transition hover:bg-amber-400 disabled:opacity-40"
-          >
-            <i data-lucide="send" class="h-4 w-4"></i>
-          </button>
+      <!-- COLUMN 3: SUMMARIZED AUDITS & DEMOGRAPHIC CHARTS (Scrollable Cockpit Container) -->
+      <div id="wrapper-col-3" class="hidden md:flex flex-col h-full w-full md:w-1/3 space-y-2 min-h-0 overflow-y-auto pr-1 text-slate-300">
+        
+        <!-- Audits Card -->
+        <div id="card-audits" class="flex flex-col bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 h-[200px] shrink-0">
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-1 mb-1.5 shrink-0 flex-wrap gap-1">
+            <div>
+              <h3 class="font-extrabold text-[9px] uppercase text-slate-100">Audit Summaries</h3>
+              <p class="text-[6px] text-slate-500 font-medium">Orange shows current period. Highest sales sorted first.</p>
+            </div>
+
+            <div class="flex items-center gap-1">
+              <!-- Dropdown -->
+              <div class="bg-slate-950 px-1 py-0.5 rounded border border-slate-800/80">
+                <select id="fiscal-year-select" onchange="setFiscalYear(this.value)" class="bg-transparent text-[7px] font-black outline-none text-amber-500 cursor-pointer font-bold">
+                  <option value="2026" selected>2026</option>
+                  <option value="2025">2025</option>
+                  <option value="all">All Years</option>
+                </select>
+              </div>
+              <!-- Tab selector -->
+              <div class="flex bg-slate-950 p-0.5 rounded border border-slate-800/60">
+                <button id="perf-tab-days" onclick="setPerformanceTab('days')" class="text-[6px] px-1 py-0.2 rounded font-black transition">Days</button>
+                <button id="perf-tab-week" onclick="setPerformanceTab('week')" class="text-[6px] px-1 py-0.2 rounded font-black transition">Weeks</button>
+                <button id="perf-tab-month" onclick="setPerformanceTab('month')" class="text-[6px] px-1 py-0.2 rounded font-black transition">Months</button>
+                <button id="perf-tab-qtr" onclick="setPerformanceTab('qtr')" class="text-[6px] px-1 py-0.2 rounded font-black transition">Qtrs</button>
+                <button id="perf-tab-year" onclick="setPerformanceTab('year')" class="text-[6px] px-1 py-0.2 rounded font-black transition">Yrs</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Split Row: Periods on left, details on right -->
+          <div class="flex-1 grid grid-cols-2 gap-2 overflow-hidden">
+            <!-- Explicit Height-restricted Scroll Container for Periods -->
+            <div id="perf-periods-list" class="overflow-y-auto max-h-[140px] space-y-1 pr-0.5 min-h-0">
+              <!-- Period items -->
+            </div>
+            <div id="perf-top-customers" class="bg-slate-950/30 border border-slate-800/50 rounded-lg p-1.5 overflow-y-auto max-h-[140px] space-y-1 min-h-0">
+              <!-- Top customer billings (Top 10) -->
+            </div>
+          </div>
         </div>
-      </section>
+
+        <!-- Demographics & Charts Card -->
+        <div id="card-demographics" class="flex flex-col bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 h-[290px] shrink-0">
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-1 mb-1.5 shrink-0 flex-wrap gap-1">
+            <h3 class="font-extrabold text-[9px] uppercase text-slate-100 flex items-center gap-1 flex-wrap">
+              <i data-lucide="building" class="h-3.5 w-3.5 text-amber-500"></i> City Demographics
+              <span id="cities-date-range" class="text-[8px] text-slate-500 font-bold tracking-normal italic">...</span>
+            </h3>
+            <div class="flex bg-slate-950 p-0.5 rounded border border-slate-800/60">
+              <button id="demo-filter-month" onclick="setDemographicsFilter('month')" class="text-[6px] px-1 py-0.2 rounded font-black transition">Month</button>
+              <button id="demo-filter-year" onclick="setDemographicsFilter('year')" class="text-[6px] px-1 py-0.2 rounded font-black transition">Year</button>
+              <button id="demo-filter-all" onclick="setDemographicsFilter('all')" class="text-[6px] px-1.5 py-0.2 rounded font-black transition">All</button>
+            </div>
+          </div>
+
+          <!-- Double Chart Grid -->
+          <div class="grid grid-cols-2 gap-2 shrink-0 h-16 mb-2 overflow-hidden">
+            <div class="bg-slate-950/40 border border-slate-800/50 rounded-lg flex items-center justify-center p-1">
+              <canvas id="cityChartCanvas" class="max-w-full max-h-full"></canvas>
+            </div>
+            <div class="bg-slate-950/40 border border-slate-800/50 rounded-lg flex items-center justify-center p-1">
+              <canvas id="trendChartCanvas" class="max-w-full max-h-full"></canvas>
+            </div>
+          </div>
+
+          <!-- City sales progress list -->
+          <div id="city-distribution-container" class="flex-1 overflow-y-auto pr-0.5 space-y-1 min-h-[120px]">
+            <!-- Dynamically populated progress list -->
+          </div>
+        </div>
+
+        <!-- NEW: Synchronized Dormant High-Risk Customer Monitor inside Audits & Charts Column -->
+        <div id="card-dormant-audits" class="flex flex-col bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 h-[180px] shrink-0">
+          <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-1.5 border-b border-slate-800/80 pb-1.5 mb-2 shrink-0">
+            <div>
+              <h3 class="font-extrabold text-[9px] uppercase text-rose-500 flex items-center gap-1">
+                <i data-lucide="alert-triangle" class="h-3.5 w-3.5"></i> High-Risk Dormancy
+              </h3>
+            </div>
+            <div class="flex bg-slate-950 p-0.5 rounded border border-slate-800/60 self-start">
+              <button id="dormant-btn-2-twin" onclick="setDormantLimit(2)" class="text-[7px] px-2 py-0.5 rounded font-black transition">2W+</button>
+              <button id="dormant-btn-4-twin" onclick="setDormantLimit(4)" class="text-[7px] px-2 py-0.5 rounded font-black transition">4W+</button>
+              <button id="dormant-btn-8-twin" onclick="setDormantLimit(8)" class="text-[7px] px-2 py-0.5 rounded font-black transition">8W+</button>
+            </div>
+          </div>
+
+          <!-- Scrollable Dormant Portfolio inside Audit View -->
+          <div id="dormant-list-container-audits" class="flex-1 overflow-y-auto pr-0.5 space-y-1 divide-y divide-slate-800/30 min-h-0">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Seasonality & Pareto Card -->
+        <div id="card-seasonality-pareto" class="grid grid-cols-2 gap-2 h-[160px] shrink-0">
+          <!-- Seasonality -->
+          <div class="bg-slate-900/30 border border-slate-800/50 rounded-xl p-2 flex flex-col justify-between overflow-hidden">
+            <span class="text-[7px] text-slate-400 font-black uppercase tracking-wider block border-b border-slate-800/85 pb-0.5 font-bold">Seasonality</span>
+            <div id="seasonality-container" class="flex-1 overflow-y-auto mt-1 space-y-1 min-h-0">
+              <!-- Weekday progress indicators -->
+            </div>
+          </div>
+          <!-- Pareto -->
+          <div class="bg-slate-900/30 border border-slate-800/50 rounded-xl p-2 flex flex-col justify-between overflow-hidden">
+            <span class="text-[7px] text-emerald-400 font-black uppercase tracking-wider block border-b border-slate-800/85 pb-0.5 font-bold">Pareto Study</span>
+            <div id="pareto-container" class="flex-1 flex flex-col justify-center min-h-0 overflow-y-auto">
+              <!-- Pareto analysis calculations -->
+            </div>
+          </div>
+        </div>
+
+      </div>
 
     </main>
 
+    <!-- --- MOBILE NAVIGATION TAB BAR (Strictly hidden on desktop) --- -->
+    <div class="md:hidden bg-slate-900 border-t border-slate-800/80 flex justify-around py-2 shrink-0 z-40">
+      <button onclick="switchMobileTab('directory')" id="tab-directory" class="flex flex-col items-center text-amber-500">
+        <i data-lucide="users" class="h-4.5 w-4.5"></i>
+        <span class="text-[8px] mt-0.5 font-black uppercase">Ledger</span>
+      </button>
+      <button onclick="switchMobileTab('insights')" id="tab-insights" class="flex flex-col items-center text-slate-400">
+        <i data-lucide="trending-up" class="h-4.5 w-4.5"></i>
+        <span class="text-[8px] mt-0.5 font-black uppercase">Velocity & Risk</span>
+      </button>
+      <button onclick="switchMobileTab('audits')" id="tab-audits" class="flex flex-col items-center text-slate-400">
+        <i data-lucide="check-square" class="h-4.5 w-4.5"></i>
+        <span class="text-[8px] mt-0.5 font-black uppercase">Audits & Charts</span>
+      </button>
+    </div>
+
     <!-- --- STATEMENT LEDGER DRILLDOWN MODAL --- -->
-    <div id="ledger-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-5 shadow-2xl relative">
-        <button 
-          onclick="closeLedgerModal()"
-          class="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full border border-slate-800/80"
-        >
-          <i data-lucide="x" class="h-5 w-5"></i>
+    <div id="ledger-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-3">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-4 shadow-2xl relative">
+        <button onclick="closeLedgerModal()" class="absolute top-3 right-3 p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full border border-slate-800/80">
+          <i data-lucide="x" class="h-4 w-4"></i>
         </button>
 
-        <h3 id="ledger-modal-title" class="font-extrabold text-xs uppercase text-slate-100 mb-2 flex items-center gap-1.5">
-          <i data-lucide="file-text" class="h-4.5 w-4.5 text-amber-500"></i> Statement Ledger
+        <h3 id="ledger-modal-title" class="font-extrabold text-[10px] uppercase text-slate-100 mb-2 flex items-center gap-1">
+          <i data-lucide="file-text" class="h-4 w-4 text-amber-500"></i> Statement Ledger
         </h3>
         
         <!-- Premium Action Panel: PDF Exporter settings -->
-        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 mb-4 mt-2">
-          <span class="text-[9px] text-amber-400 font-bold block mb-1.5 uppercase tracking-wider">Export & Share Statement</span>
-          <div class="flex items-center gap-2">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 mb-3 mt-1.5">
+          <span class="text-[8px] text-amber-400 font-bold block mb-1 uppercase tracking-wider">Export & Share Statement</span>
+          <div class="flex items-center gap-1.5">
             <div class="flex-1">
-              <select id="pdf-duration-select" class="w-full bg-slate-900 text-[11px] font-semibold border border-slate-800 rounded-lg px-2 py-1.5 outline-none text-slate-300">
+              <select id="pdf-duration-select" class="w-full bg-slate-900 text-[10px] font-semibold border border-slate-800 rounded-lg px-2 py-1 outline-none text-slate-300 font-bold">
                 <option value="1">Last 1 Month</option>
                 <option value="3" selected>Last 3 Months</option>
                 <option value="6">Last 6 Months</option>
                 <option value="all">All-Time Transactions</option>
               </select>
             </div>
-            <button 
-              id="pdf-export-btn"
-              onclick="triggerPdfGeneration()"
-              class="bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold text-[10px] px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-all"
-            >
-              <i data-lucide="share-2" class="h-3.5 w-3.5"></i>
+            <button id="pdf-export-btn" onclick="triggerPdfGeneration()" class="bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold text-[9px] px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all">
+              <i data-lucide="share-2" class="h-3 w-3"></i>
               <span>Share PDF</span>
             </button>
           </div>
         </div>
 
-        <div id="ledger-modal-rows" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+        <div id="ledger-modal-rows" class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
           <!-- Statement entries list -->
         </div>
       </div>
@@ -519,13 +435,6 @@
     // Cross-Browser timezone independent construct for 14th April 2026 milestone
     const ANALYSIS_START = new Date(2026, 3, 14, 0, 0, 0); // April 14th 2026
     
-    // Fallback support for local key insertion
-    let apiKey = localStorage.getItem('ledgermatric_gemini_key') || "";
-
-    // Speech recognition setup
-    let recognition = null;
-    let isRecordingVoice = false;
-
     // ChartJS Instances
     let cityDoughnutChart = null;
     let trendChart = null;
@@ -544,16 +453,7 @@
       dormantWeeksLimit: 4,
       dormantCustomersList: [],
       customerSort: 'balance', // Default sorting type for Customer Directory
-      metrics: {
-        totalDue: 0,
-        totalSales: 0,
-        recentCollections: 0,
-        cei: 0,
-        dso: 0,
-        riskPercent: 0,
-        cityDebt: {},
-        citySales: {}
-      },
+      customerSortOrder: 'desc', // Default sort direction: descending
       currentRange: 7,
       rollingTopCustomers: [],
       rollingDateText: "",
@@ -564,15 +464,7 @@
       periodBilled: 0,
       periodPaid: 0,
       periodTopCustomers: [],
-      topPeriodsList: [],
-      aiMessageInput: "",
-      aiMessages: [
-        {
-          role: "assistant",
-          content: "Hello! I am your LedgerMetric Gemini AI Assistant. Ask me anything about your sheet database. For example:\n\n* 'Which city has the highest billing sales?'\n* 'List the dormant customers who haven't paid me in 4 weeks.'"
-        }
-      ],
-      isAiTyping: false
+      topPeriodsList: []
     };
 
     // --- TOAST NOTIFICATIONS (Safari Friendly) ---
@@ -581,12 +473,12 @@
       if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
-        container.className = 'fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4';
+        container.className = 'fixed bottom-5 right-5 z-50 flex flex-col gap-1.5 max-w-xs w-full pointer-events-none px-4';
         document.body.appendChild(container);
       }
 
       const toast = document.createElement('div');
-      toast.className = `p-3 rounded-xl shadow-2xl border text-xs font-bold transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2`;
+      toast.className = `p-2.5 rounded-lg shadow-xl border text-[10px] font-bold transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-1.5`;
       
       if (type === 'error') {
         toast.className += ' bg-rose-950/90 border-rose-800 text-rose-200';
@@ -601,7 +493,7 @@
       if (type === 'success') icon = 'check-circle';
 
       toast.innerHTML = `
-        <i data-lucide="${icon}" class="h-4 w-4 flex-shrink-0"></i>
+        <i data-lucide="${icon}" class="h-3.5 w-3.5 flex-shrink-0"></i>
         <span>${message}</span>
       `;
       
@@ -645,11 +537,11 @@
       const modeText = document.getElementById('mode-text');
       const modeBtn = document.getElementById('btn-mode-toggle');
       if (state.currentMode === 'A') {
-        modeText.innerText = "Mode A (Cipher Active)";
-        modeBtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20";
+        modeText.innerText = "Mode A (Cipher)";
+        modeBtn.className = "text-[9px] font-bold px-2.5 py-1 rounded-md flex items-center space-x-1 transition bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20";
       } else {
-        modeText.innerText = "Mode B (Real Values)";
-        modeBtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20";
+        modeText.innerText = "Mode B (Real)";
+        modeBtn.className = "text-[9px] font-bold px-2.5 py-1 rounded-md flex items-center space-x-1 transition bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20";
       }
       render();
     }
@@ -662,12 +554,64 @@
         document.getElementById('app-container').classList.remove('hidden');
         document.getElementById('startup-passcode-input').value = "";
         document.getElementById('startup-error-msg').classList.add('hidden');
+        
+        // Match default mobile tab setup
+        if (window.innerWidth < 768) {
+          switchMobileTab('directory');
+        }
+        
         render();
         showToast("Ledger workspace decrypted!", "success");
       } else if (val.trim().length >= 2) {
         document.getElementById('startup-error-msg').classList.remove('hidden');
       } else {
         document.getElementById('startup-error-msg').classList.add('hidden');
+      }
+    }
+
+    // --- BOTTOM NAVIGATION TAB CONTROLLER ---
+    function switchMobileTab(tabId) {
+      // Hide all columns and wrappers
+      document.getElementById('col-directory').classList.add('hidden');
+      document.getElementById('col-insights').classList.add('hidden');
+      document.getElementById('wrapper-col-3').classList.add('hidden');
+      
+      // Hide specific sub-cards inside wrapper-col-3
+      document.getElementById('card-audits').classList.add('hidden');
+      document.getElementById('card-demographics').classList.add('hidden');
+      document.getElementById('card-dormant-audits').classList.add('hidden');
+      document.getElementById('card-seasonality-pareto').classList.add('hidden');
+
+      // Reset Tab highlights
+      ['directory', 'insights', 'audits'].forEach(t => {
+        const btn = document.getElementById('tab-' + t);
+        if (btn) btn.className = "flex flex-col items-center text-slate-400";
+      });
+
+      // Highlight target Tab item
+      const activeBtn = document.getElementById('tab-' + tabId);
+      if (activeBtn) activeBtn.className = "flex flex-col items-center text-amber-500";
+
+      if (tabId === 'directory') {
+        document.getElementById('col-directory').classList.remove('hidden');
+      } else if (tabId === 'insights') {
+        document.getElementById('col-insights').classList.remove('hidden');
+      } else if (tabId === 'audits') {
+        document.getElementById('wrapper-col-3').classList.remove('hidden');
+        
+        // Show Audits & Demographics & Seasonality side-by-side on mobile tab
+        document.getElementById('card-audits').classList.remove('hidden');
+        document.getElementById('card-demographics').classList.remove('hidden');
+        document.getElementById('card-dormant-audits').classList.remove('hidden');
+        document.getElementById('card-seasonality-pareto').classList.remove('hidden');
+
+        // Layout optimizations for audits view on mobile (Set full height scrollable columns)
+        document.getElementById('card-audits').className = "bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 flex flex-col shrink-0 h-[200px]";
+        document.getElementById('card-demographics').className = "bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 flex flex-col shrink-0 h-[290px]";
+        document.getElementById('card-dormant-audits').className = "bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 flex flex-col shrink-0 h-[180px]";
+        document.getElementById('card-seasonality-pareto').className = "grid grid-cols-2 gap-2 shrink-0 h-[160px]";
+        
+        setTimeout(renderCityDistribution, 50); // Refresh ChartJS layout parameters safely on tab trigger
       }
     }
 
@@ -910,14 +854,28 @@
       renderPerformanceTab();
     }
 
+    // Demographics switches
     function setDemographicsFilter(filter) {
       state.demographicsFilter = filter;
       updateCityDemographics();
       renderCityDistribution();
     }
 
+    // Customer sorting switches
     function setCustomerSort(val) {
       state.customerSort = val;
+      renderCustomersBook();
+    }
+
+    function toggleSortOrder() {
+      state.customerSortOrder = state.customerSortOrder === 'desc' ? 'asc' : 'desc';
+      
+      const orderIcon = document.getElementById('sort-order-icon');
+      if (orderIcon) {
+        orderIcon.setAttribute('data-lucide', state.customerSortOrder === 'desc' ? 'arrow-down' : 'arrow-up');
+        lucide.createIcons();
+      }
+      
       renderCustomersBook();
     }
 
@@ -1063,7 +1021,6 @@
       }
 
       if (state.currentTab === 'days') {
-        // Aggregate billing totals by specific Days
         const dayTotals = {};
         yearFilteredTx.forEach(t => {
           if (t.type === 'bill') {
@@ -1071,7 +1028,6 @@
             dayTotals[dayKey] = (dayTotals[dayKey] || 0) + Number(t.amount || 0);
           }
         });
-        // Sort and yield ALL days sorted by sales amount in DESCENDING order (highest sale first)
         state.topPeriodsList = Object.entries(dayTotals).sort((a,b) => b[1] - a[1]);
       } else {
         const periodTotals = {};
@@ -1081,7 +1037,6 @@
             periodTotals[pKey] = (periodTotals[pKey] || 0) + Number(t.amount || 0);
           }
         });
-        // Already sorted by sales value descending
         state.topPeriodsList = Object.entries(periodTotals).sort((a,b) => b[1] - a[1]);
       }
 
@@ -1109,6 +1064,7 @@
       state.periodTopCustomers = Object.entries(customerMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
     }
 
+    // --- SORT CONTROLLERS FOR CHRONOLOGICAL LISTS ---
     function selectPeriod(pKey) {
       state.selectedPeriod = pKey;
       updatePerformanceTabState();
@@ -1122,78 +1078,66 @@
       renderPerformanceTab();
     }
 
-    function setDormantLimit(weeks) {
-      state.dormantWeeksLimit = weeks;
-      updateDormantList();
-      renderDormantList();
-    }
-
     // --- DRILLDOWN MODAL VIEW CONTROLS ---
     function openLedgerModal(custName) {
       state.selectedDrilldownCustomer = custName;
       renderLedgerModal();
     }
 
-    // --- GEOLOCATION API KEY DRAWER TOGGLES ---
     function closeLedgerModal() {
       state.selectedDrilldownCustomer = null;
       document.getElementById('ledger-modal').classList.add('hidden');
     }
 
-    // --- INTEGRATED SPEECH RECOGNITION (Voice Prompter) ---
-    function toggleVoiceRecognition() {
-      const micBtn = document.getElementById('mic-btn');
-      const micIcon = document.getElementById('mic-icon');
-      const chatInput = document.getElementById('chat-input');
+    function setDormantLimit(weeks) {
+      state.dormantWeeksLimit = weeks;
+      updateDormantList();
+      renderDormantList();
+    }
 
-      window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    // --- BOTTOM NAVIGATION TAB CONTROLLER ---
+    function switchMobileTab(tabId) {
+      // Hide all columns and wrappers
+      document.getElementById('col-directory').classList.add('hidden');
+      document.getElementById('col-insights').classList.add('hidden');
+      document.getElementById('wrapper-col-3').classList.add('hidden');
+      
+      // Hide specific sub-cards inside wrapper-col-3
+      document.getElementById('card-audits').classList.add('hidden');
+      document.getElementById('card-demographics').classList.add('hidden');
+      document.getElementById('card-dormant-audits').classList.add('hidden');
+      document.getElementById('card-seasonality-pareto').classList.add('hidden');
 
-      if (!window.SpeechRecognition) {
-        showToast("Speech Recognition is not supported in this Safari/browser configuration.", "error");
-        return;
-      }
+      // Reset Tab highlights
+      ['directory', 'insights', 'audits'].forEach(t => {
+        const btn = document.getElementById('tab-' + t);
+        if (btn) btn.className = "flex flex-col items-center text-slate-400";
+      });
 
-      if (!recognition) {
-        recognition = new window.SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-IN';
+      // Highlight target Tab item
+      const activeBtn = document.getElementById('tab-' + tabId);
+      if (activeBtn) activeBtn.className = "flex flex-col items-center text-amber-500";
 
-        recognition.onstart = () => {
-          isRecordingVoice = true;
-          micBtn.classList.add('mic-recording');
-          chatInput.placeholder = "Listening to your voice...";
-        };
+      if (tabId === 'directory') {
+        document.getElementById('col-directory').classList.remove('hidden');
+      } else if (tabId === 'insights') {
+        document.getElementById('col-insights').classList.remove('hidden');
+      } else if (tabId === 'audits') {
+        document.getElementById('wrapper-col-3').classList.remove('hidden');
+        
+        // Show Audits & Demographics & Seasonality side-by-side on mobile tab
+        document.getElementById('card-audits').classList.remove('hidden');
+        document.getElementById('card-demographics').classList.remove('hidden');
+        document.getElementById('card-dormant-audits').classList.remove('hidden');
+        document.getElementById('card-seasonality-pareto').classList.remove('hidden');
 
-        recognition.onresult = (event) => {
-          const speechToText = event.results[0][0].transcript;
-          chatInput.value = speechToText;
-        };
-
-        recognition.onerror = (e) => {
-          console.warn("Speech recognition error", e);
-          stopRecording();
-        };
-
-        recognition.onend = () => {
-          stopRecording();
-        };
-      }
-
-      if (!isRecordingVoice) {
-        try {
-          recognition.start();
-        } catch (e) {
-          console.error(e);
-        }
-      } else {
-        recognition.stop();
-      }
-
-      function stopRecording() {
-        isRecordingVoice = false;
-        micBtn.classList.remove('mic-recording');
-        chatInput.placeholder = "Ask Gemini: 'Write a warning alert for Shingar Kala'";
+        // Layout optimizations for audits view on mobile (Set full height scrollable columns)
+        document.getElementById('card-audits').className = "bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 flex flex-col shrink-0 h-[200px]";
+        document.getElementById('card-demographics').className = "bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 flex flex-col shrink-0 h-[290px]";
+        document.getElementById('card-dormant-audits').className = "bg-slate-900/30 border border-slate-800/50 rounded-xl p-2.5 flex flex-col shrink-0 h-[180px]";
+        document.getElementById('card-seasonality-pareto').className = "grid grid-cols-2 gap-2 shrink-0 h-[160px]";
+        
+        setTimeout(renderCityDistribution, 50); // Refresh ChartJS layout parameters safely on tab trigger
       }
     }
 
@@ -1346,102 +1290,6 @@
       }
     }
 
-    // --- API KEY CONFIGURATOR ---
-    function toggleApiKeyInput() {
-      const el = document.getElementById('api-key-panel');
-      el.classList.toggle('hidden');
-      if (!el.classList.contains('hidden')) {
-        document.getElementById('custom-api-key-input').value = apiKey;
-      }
-    }
-
-    // --- PERSIST API KEY ---
-    function saveApiKey() {
-      const val = document.getElementById('custom-api-key-input').value.trim();
-      apiKey = val;
-      localStorage.setItem('ledgermatric_gemini_key', val);
-      document.getElementById('api-key-panel').classList.add('hidden');
-      showToast("Custom Gemini AI Key saved locally!", "success");
-    }
-
-    // --- GEMINI AI ASSISTANT DISPATCH MECHANISM ---
-    async function dispatchAiMessage() {
-      const inputEl = document.getElementById('chat-input');
-      const userText = inputEl.value.trim();
-      if (!userText) return;
-
-      state.aiMessages.push({ role: "user", content: userText });
-      inputEl.value = "";
-      state.isAiTyping = true;
-      renderChat();
-
-      const contextData = {
-        global_metrics: {
-          total_due: state.metrics.totalDue,
-          total_sales: state.metrics.totalSales,
-          collections: state.metrics.recentCollections,
-          cei_efficiency: state.metrics.cei,
-          risk_factor_percent: state.metrics.riskPercent,
-          debt_aging: { age15: state.metrics.age15, age30: state.metrics.age30, agePlus: state.metrics.agePlus }
-        },
-        city_sales_billed: state.metrics.citySales,
-        customer_segments_and_clv: state.globalBalances.map(b => ({
-          name: b.name,
-          balance: b.balance,
-          clv: b.clv,
-          paid_to_billed_ratio: b.ratio,
-          segment: b.segment,
-          recency_days: b.recency,
-          frequency_count: b.frequency,
-          city: state.customers[b.name]?.city || "Jalandhar"
-        })),
-        all_time_transactions: state.rawTxns.map(t => ({
-          name: t.name,
-          amount: t.amount,
-          date: t.date,
-          type: t.type,
-          remarks: t.remarks
-        }))
-      };
-
-      const systemPrompt = `You are LedgerMetric's Financial Advisor.
-You have access to all real-time transaction logs from the absolute starting date of the business till today. 
-Answer queries clearly, concisely, and with accurate calculations.
-
-Note: Opening balances were recorded as starting journals on 14-Apr-2026. Keep this milestone in mind when discussing performance.
-
-CIPHER CODE MATRIX ("kanpurcity"):
-k-1, a-2, n-3, p-4, u-5, r-6, c-7, i-8, t-9, y-0. (Translate if requested to decode values).
-
-CONTEXT DATA:
-${JSON.stringify(contextData, null, 2)}`;
-
-      try {
-        const queryKey = apiKey || "";
-        const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${queryKey}`;
-        const payload = {
-          contents: [{ role: "user", parts: [{ text: userText }] }],
-          systemInstruction: { parts: [{ text: systemPrompt }] }
-        };
-
-        const response = await fetch(apiEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) throw new Error("API Exception");
-        const result = await response.json();
-        const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text || "Unable to formulate a response. Can you ask something specific about your collections?";
-        state.aiMessages.push({ role: "assistant", content: textResponse });
-      } catch (err) {
-        state.aiMessages.push({ role: "assistant", content: "⚠️ Gemini is busy auditing balances. Please verify you provided a correct API key and try again." });
-      } finally {
-        state.isAiTyping = false;
-        renderChat();
-      }
-    }
-
     // --- CENTRAL RENDERING ENGINE ---
     function render() {
       if (state.isLoading) return; // Wait for async fetching
@@ -1458,7 +1306,7 @@ ${JSON.stringify(contextData, null, 2)}`;
       document.getElementById('kpi-total-sales').innerText = renderAmountValue(state.metrics.totalSales);
       document.getElementById('kpi-collections').innerText = renderAmountValue(state.metrics.recentCollections);
 
-      // 3. Dynamic Progress Sliders (CEI, DSO, Portfolio Risk)
+      // 3. Progress Sliders (CEI, DSO, Portfolio Risk)
       document.getElementById('metric-cei').innerText = state.metrics.cei.toFixed(1) + "%";
       document.getElementById('cei-progress').style.width = Math.min(state.metrics.cei, 100) + "%";
 
@@ -1486,7 +1334,6 @@ ${JSON.stringify(contextData, null, 2)}`;
       renderPerformanceTab();
       renderCityDistribution();
       renderDormantList();
-      renderChat();
       renderSeasonalityAndPareto();
 
       // Trigger Lucide parsing
@@ -1498,17 +1345,17 @@ ${JSON.stringify(contextData, null, 2)}`;
     function renderCustomersBook() {
       // Dynamic sorting wrapper to avoid mutating precomputed CLV segments
       let sortedBalances = [...state.globalBalances];
+      const isDesc = state.customerSortOrder === 'desc';
       
       const sortType = state.customerSort || 'balance';
       if (sortType === 'balance') {
-        sortedBalances.sort((a, b) => b.balance - a.balance);
+        sortedBalances.sort((a, b) => isDesc ? b.balance - a.balance : a.balance - b.balance);
       } else if (sortType === 'clv') {
-        sortedBalances.sort((a, b) => b.clv - a.clv);
+        sortedBalances.sort((a, b) => isDesc ? b.clv - a.clv : a.clv - b.clv);
       } else if (sortType === 'frequency') {
-        sortedBalances.sort((a, b) => b.frequency - a.frequency);
+        sortedBalances.sort((a, b) => isDesc ? b.frequency - a.frequency : a.frequency - b.frequency);
       } else if (sortType === 'recency') {
-        // Most recent payments first (ascending days: e.g. 0d ago, then 5d, 22d, and lastly 999d/never)
-        sortedBalances.sort((a, b) => a.recency - b.recency);
+        sortedBalances.sort((a, b) => isDesc ? b.recency - a.recency : a.recency - b.recency);
       }
 
       const filteredBalances = sortedBalances.filter(b => 
@@ -1527,33 +1374,33 @@ ${JSON.stringify(contextData, null, 2)}`;
         const cMeta = state.customers[b.name] || {};
         
         // Define beautiful Segment styling
-        let segBadge = `<span class="bg-slate-800 text-slate-300 text-[8px] font-bold px-1.5 py-0.5 rounded mr-1">Silver</span>`;
+        let segBadge = `<span class="bg-slate-800 text-slate-300 text-[7px] font-bold px-1 py-0.2 rounded mr-1">Silver</span>`;
         if (b.segment === 'Platinum') {
-          segBadge = `<span class="bg-amber-500/20 text-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded border border-amber-500/20 mr-1">Platinum</span>`;
+          segBadge = `<span class="bg-amber-500/20 text-amber-400 text-[7px] font-black px-1 py-0.2 rounded border border-amber-500/20 mr-1">Platinum</span>`;
         } else if (b.segment === 'Gold') {
-          segBadge = `<span class="bg-indigo-500/20 text-indigo-400 text-[8px] font-bold px-1.5 py-0.5 rounded border border-indigo-500/10 mr-1">Gold</span>`;
+          segBadge = `<span class="bg-indigo-500/20 text-indigo-400 text-[7px] font-bold px-1 py-0.2 rounded border border-indigo-500/10 mr-1">Gold</span>`;
         }
 
         // Define Profitability check
         let reminderBadge = "";
         if (b.ratio < 50) {
-          reminderBadge = `<span class="bg-rose-500/10 text-rose-400 text-[8px] font-extrabold px-1.5 py-0.5 rounded border border-rose-500/20 ml-1">Needs Reminder</span>`;
+          reminderBadge = `<span class="bg-rose-500/10 text-rose-400 text-[7px] font-extrabold px-1 py-0.2 rounded border border-rose-500/20 ml-1">Reminder</span>`;
         } else {
-          reminderBadge = `<span class="bg-emerald-500/10 text-emerald-400 text-[8px] font-medium px-1.5 py-0.5 rounded border border-emerald-500/10 ml-1">Healthy</span>`;
+          reminderBadge = `<span class="bg-emerald-500/10 text-emerald-400 text-[7px] font-medium px-1 py-0.2 rounded border border-emerald-500/10 ml-1">Healthy</span>`;
         }
 
         html += `
           <div 
             onclick="openLedgerModal('${b.name}')"
-            class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 hover:bg-slate-900/40 rounded-xl px-2.5 transition-colors cursor-pointer gap-2"
+            class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-2 hover:bg-slate-900/40 rounded-xl px-2 transition-colors cursor-pointer gap-1"
           >
             <div>
               <div class="flex items-center gap-1 flex-wrap">
-                <h4 class="font-bold text-xs text-slate-100">${b.name}</h4>
+                <h4 class="font-bold text-[11px] text-slate-100">${b.name}</h4>
                 ${segBadge}
                 ${reminderBadge}
               </div>
-              <p class="text-[9px] text-slate-500 mt-1 font-medium">
+              <p class="text-[8px] text-slate-500 font-medium">
                 ${cMeta.city || "meena bazar"} • ${cMeta.phone || "N/A"} • 
                 CLV: <strong class="text-slate-300">${renderAmountValue(b.clv)}</strong> • 
                 Recency: <strong class="text-slate-300">${b.recency === 999 ? 'Never' : `${b.recency}d`}</strong> • 
@@ -1561,10 +1408,10 @@ ${JSON.stringify(contextData, null, 2)}`;
               </p>
             </div>
             <div class="text-right self-end sm:self-center">
-              <span class="font-black text-xs ${b.balance > 0 ? 'text-rose-500' : 'text-emerald-400'} block">
+              <span class="font-black text-[11px] ${b.balance > 0 ? 'text-rose-500' : 'text-emerald-400'} block">
                 ${renderAmountValue(b.balance)}
               </span>
-              <p class="text-[8px] text-amber-500 font-bold block">Bill-to-Pay Ratio: ${Math.round(b.ratio)}%</p>
+              <p class="text-[7px] text-amber-500 font-bold block">Bill-to-Pay: ${Math.round(b.ratio)}%</p>
             </div>
           </div>
         `;
@@ -1578,25 +1425,25 @@ ${JSON.stringify(contextData, null, 2)}`;
         const btn = document.getElementById(`range-btn-${d}`);
         if (btn) {
           if (String(state.currentRange) === d) {
-            btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition bg-amber-500 text-slate-950 shadow-xs";
+            btn.className = "text-[7px] px-1.5 py-0.5 rounded font-black transition bg-amber-500 text-slate-950 shadow-xs";
           } else {
-            btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition text-slate-400 hover:text-white";
+            btn.className = "text-[7px] px-1.5 py-0.5 rounded font-black transition text-slate-400 hover:text-white";
           }
         }
       });
 
       const container = document.getElementById('rolling-list-container');
       if (state.rollingTopCustomers.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-500 text-center py-8">No billing records for selected rolling range.</p>`;
+        container.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No billing records for selected rolling range.</p>`;
         return;
       }
 
       let html = "";
       state.rollingTopCustomers.forEach(([name, amt], idx) => {
         html += `
-          <div class="flex justify-between items-center py-2 px-2.5 bg-slate-950/40 rounded-lg border border-slate-800/40 text-xs">
-            <div class="flex items-center space-x-2">
-              <span class="font-extrabold text-[8px] text-amber-500">#${idx + 1}</span>
+          <div class="flex justify-between items-center py-1.5 px-2 bg-slate-950/40 rounded-lg border border-slate-800/40 text-[10px]">
+            <div class="flex items-center space-x-1.5">
+              <span class="font-extrabold text-[7px] text-amber-500">#${idx + 1}</span>
               <span class="font-bold text-slate-200">${name}</span>
             </div>
             <span class="font-extrabold text-slate-100">${renderAmountValue(amt)}</span>
@@ -1613,9 +1460,9 @@ ${JSON.stringify(contextData, null, 2)}`;
         const btn = document.getElementById(`perf-tab-${t}`);
         if (btn) {
           if (state.currentTab === t) {
-            btn.className = "text-[8px] px-2 py-1 rounded-md font-black transition bg-amber-500 text-slate-950 shadow-xs";
+            btn.className = "text-[7px] px-1.5 py-0.5 rounded font-black transition bg-amber-500 text-slate-950 shadow-xs";
           } else {
-            btn.className = "text-[8px] px-2 py-1 rounded-md font-black transition text-slate-400 hover:text-white";
+            btn.className = "text-[7px] px-1.5 py-0.5 rounded font-black transition text-slate-400 hover:text-white";
           }
         }
       });
@@ -1641,27 +1488,27 @@ ${JSON.stringify(contextData, null, 2)}`;
         periodsHtml += `
           <div 
             onclick="selectPeriod('${pKey}')"
-            class="flex justify-between items-center p-2 rounded-xl text-xs cursor-pointer border transition-all ${highlightClass}"
+            class="flex justify-between items-center p-1.5 rounded-lg text-[10px] cursor-pointer border transition-all ${highlightClass}"
           >
             <span class="font-bold">${pKey} ${pKey === activeRunningPeriod && (state.selectedYear === "2026" || state.selectedYear === "all") ? '(Current)' : ''}</span>
             <span class="font-extrabold">${renderAmountValue(amt)}</span>
           </div>
         `;
       });
-      periodsContainer.innerHTML = periodsHtml || `<p class="text-xs text-slate-500 text-center py-6">No historical records in target fiscal year.</p>`;
+      periodsContainer.innerHTML = periodsHtml || `<p class="text-[10px] text-slate-500 text-center py-6">No historical records in target fiscal year.</p>`;
 
       // Right column: Selected period details (Top 10 Scrollable)
       const customersContainer = document.getElementById('perf-top-customers');
       if (state.periodTopCustomers.length === 0) {
-        customersContainer.innerHTML = `<p class="text-xs text-slate-600 text-center py-10">No records found for selected interval.</p>`;
+        customersContainer.innerHTML = `<p class="text-[10px] text-slate-600 text-center py-10">No records found for selected interval.</p>`;
         return;
       }
 
       let custHtml = "";
       state.periodTopCustomers.forEach(([name, amt], idx) => {
         custHtml += `
-          <div class="flex justify-between items-center text-xs pb-1.5 border-b border-slate-900/60 last:border-none">
-            <span class="text-slate-300 text-xs">#${idx + 1} ${name}</span>
+          <div class="flex justify-between items-center text-[10px] pb-1 border-b border-slate-900/60 last:border-none">
+            <span class="text-slate-300 text-[10px]">#${idx + 1} ${name}</span>
             <span class="font-extrabold text-slate-100">${renderAmountValue(amt)}</span>
           </div>
         `;
@@ -1677,9 +1524,9 @@ ${JSON.stringify(contextData, null, 2)}`;
         const btn = document.getElementById(`demo-filter-${f}`);
         if (btn) {
           if (dFilter === f) {
-            btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition bg-amber-500 text-slate-950 shadow-xs";
+            btn.className = "text-[7px] px-2 py-0.5 rounded font-black transition bg-amber-500 text-slate-950 shadow-xs";
           } else {
-            btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition text-slate-400 hover:text-white";
+            btn.className = "text-[7px] px-2 py-0.5 rounded font-black transition text-slate-400 hover:text-white";
           }
         }
       });
@@ -1694,16 +1541,16 @@ ${JSON.stringify(contextData, null, 2)}`;
 
       let html = "";
       sortedCities.forEach(([city, amt]) => {
-        const totalSales = state.metrics.totalSales;
+        const totalSales = Object.values(state.metrics.citySales).reduce((a, b) => a + b, 0);
         const pct = totalSales > 0 ? (amt / totalSales) * 100 : 0;
         html += `
-          <div>
-            <div class="flex justify-between text-[11px] font-semibold mb-1">
-              <span>${city}</span>
+          <div class="py-1">
+            <div class="flex justify-between text-[10px] font-semibold mb-0.5">
+              <span class="text-slate-200 font-medium">${city}</span>
               <span class="text-amber-400 font-bold">${renderAmountValue(amt)} (${pct.toFixed(1)}%)</span>
             </div>
-            <div class="bg-slate-950 border border-slate-800/50 rounded-full h-2 overflow-hidden">
-              <div style="background: #f59e0b; width: ${Math.min(pct, 100)}%; height: 100%; border-radius: 999px;"></div>
+            <div class="bg-slate-950 border border-slate-800/50 rounded-full h-1.5 overflow-hidden">
+              <div style="background: #f59e0b; width: ${Math.min(pct, 100)}%; height: 105%; border-radius: 999px;"></div>
             </div>
           </div>
         `;
@@ -1743,7 +1590,7 @@ ${JSON.stringify(contextData, null, 2)}`;
                 '#8b5cf6'  
               ],
               borderColor: '#0f172a',
-              borderWidth: 2
+              borderWidth: 1.5
             }]
           },
           options: {
@@ -1759,7 +1606,7 @@ ${JSON.stringify(contextData, null, 2)}`;
                 }
               }
             },
-            cutout: '75%'
+            cutout: '72%'
           }
         });
 
@@ -1807,13 +1654,13 @@ ${JSON.stringify(contextData, null, 2)}`;
               label: 'Sales',
               data: salesData,
               backgroundColor: '#f59e0b', 
-              borderRadius: 3
+              borderRadius: 2
             },
             {
               label: 'Collections',
               data: collectionsData,
               backgroundColor: '#10b981', 
-              borderRadius: 3
+              borderRadius: 2
             }
           ]
         },
@@ -1822,12 +1669,12 @@ ${JSON.stringify(contextData, null, 2)}`;
           maintainAspectRatio: false,
           plugins: {
             legend: {
-              labels: { color: '#94a3b8', font: { size: 8 } }
+              labels: { color: '#94a3b8', font: { size: 7 } }
             }
           },
           scales: {
-            x: { ticks: { color: '#94a3b8', font: { size: 8 } }, grid: { display: false } },
-            y: { ticks: { color: '#94a3b8', font: { size: 8 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            x: { ticks: { color: '#94a3b8', font: { size: 7 } }, grid: { display: false } },
+            y: { ticks: { color: '#94a3b8', font: { size: 7 } }, grid: { color: 'rgba(255,255,255,0.03)' } }
           }
         }
       });
@@ -1835,39 +1682,55 @@ ${JSON.stringify(contextData, null, 2)}`;
 
     // --- DORMANT HIGH-RISK MONITOR LIST ---
     function renderDormantList() {
+      const activeLimit = state.dormantWeeksLimit;
+
+      // Sync Twin Button Highlight States
       [2, 4, 8].forEach(w => {
-        const btn = document.getElementById(`dormant-btn-${w}`);
-        if (state.dormantWeeksLimit === w) {
-          btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition bg-rose-500/10 text-rose-400 border border-rose-500/20";
-        } else {
-          btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition text-slate-400";
+        const btnMain = document.getElementById(`dormant-btn-${w}`);
+        const btnTwin = document.getElementById(`dormant-btn-${w}-twin`);
+
+        if (btnMain) {
+          btnMain.className = (activeLimit === w) 
+            ? "text-[7px] px-2 py-0.5 rounded font-black transition bg-rose-500/10 text-rose-400 border border-rose-500/20" 
+            : "text-[7px] px-2 py-0.5 rounded font-black transition text-slate-400";
+        }
+        if (btnTwin) {
+          btnTwin.className = (activeLimit === w) 
+            ? "text-[7px] px-2 py-0.5 rounded font-black transition bg-rose-500/10 text-rose-400 border border-rose-500/20" 
+            : "text-[7px] px-2 py-0.5 rounded font-black transition text-slate-400";
         }
       });
 
-      const container = document.getElementById('dormant-list-container');
+      const containerMain = document.getElementById('dormant-list-container');
+      const containerAudits = document.getElementById('dormant-list-container-audits');
+
       if (state.dormantCustomersList.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-500 text-center py-8">No dormant accounts found for the selected limit.</p>`;
+        const emptyState = `<p class="text-xs text-slate-500 text-center py-6">No dormant accounts found.</p>`;
+        if (containerMain) containerMain.innerHTML = emptyState;
+        if (containerAudits) containerAudits.innerHTML = emptyState;
         return;
       }
 
       let html = "";
       state.dormantCustomersList.forEach(item => {
         html += `
-          <div class="flex justify-between items-center py-2.5 text-xs">
+          <div class="flex justify-between items-center py-1.5 text-[10px]">
             <div>
               <h5 class="font-bold text-slate-200">${item.name}</h5>
-              <p class="text-[9px] text-slate-500 mt-0.5 font-medium">
-                Last payment trace: <strong class="text-slate-400">${item.lastPayDate}</strong> (${item.diffDays === 999 ? "Never Paid" : `${item.diffDays} days ago`})
+              <p class="text-[8px] text-slate-500 mt-0.5 font-medium">
+                Last trace: <strong class="text-slate-400">${item.lastPayDate}</strong> (${item.diffDays === 999 ? "Never Paid" : `${item.diffDays}d ago`})
               </p>
             </div>
-            <div class="text-right">
+            <div class="text-right shrink-0">
               <span class="font-black text-rose-500">${renderAmountValue(item.balance)}</span>
-              <p class="text-[8px] text-slate-500 mt-0.5">Dormant Debt</p>
+              <p class="text-[7px] text-slate-500">Dormant Debt</p>
             </div>
           </div>
         `;
       });
-      container.innerHTML = html;
+
+      if (containerMain) containerMain.innerHTML = html;
+      if (containerAudits) containerAudits.innerHTML = html;
     }
 
     // --- RENDER SEASONALITY AND PARETO INTEL BLOCKS ---
@@ -1875,7 +1738,7 @@ ${JSON.stringify(contextData, null, 2)}`;
       // 1. Weekly Seasonality Check
       const seasonalityContainer = document.getElementById('seasonality-container');
       const weekdayBilling = [0, 0, 0, 0, 0, 0, 0]; 
-      const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       
       state.filteredTxns.forEach(t => {
         if (t.type === 'bill') {
@@ -1895,11 +1758,11 @@ ${JSON.stringify(contextData, null, 2)}`;
         
         weekdayHtml += `
           <div>
-            <div class="flex justify-between text-[10px] mb-0.5 font-bold ${isPeak ? 'text-amber-400' : 'text-slate-400'}">
+            <div class="flex justify-between text-[9px] mb-0.5 font-bold ${isPeak ? 'text-amber-400' : 'text-slate-400'}">
               <span>${weekdayNames[idx]} ${isPeak ? '🔥 (Peak)' : ''}</span>
               <span>${renderAmountValue(amt)}</span>
             </div>
-            <div class="bg-slate-950 border border-slate-800/40 rounded-full h-2 overflow-hidden">
+            <div class="bg-slate-950 border border-slate-800/40 rounded-full h-1.5 overflow-hidden">
               <div class="h-full rounded-full transition-all ${isPeak ? 'bg-amber-500' : 'bg-slate-700/60'}" style="width: ${pctOfMax}%"></div>
             </div>
           </div>
@@ -1934,51 +1797,13 @@ ${JSON.stringify(contextData, null, 2)}`;
 
       paretoContainer.innerHTML = `
         <div class="text-center">
-          <p class="text-2xl font-black text-emerald-400">${roundedPct}%</p>
-          <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">Core Customer Concentration</p>
-          <div class="mt-2.5 text-[10px] text-slate-300 leading-relaxed text-center font-medium">
+          <p class="text-xl font-black text-emerald-400">${roundedPct}%</p>
+          <p class="text-[8px] text-slate-400 font-bold uppercase mt-0.5">Core Customer Concentration</p>
+          <div class="mt-1.5 text-[9px] text-slate-300 leading-relaxed text-center font-medium">
             Just <strong class="text-emerald-400 font-extrabold">${targetCustCount} out of ${sortedRevenueCust.length}</strong> active clients generate <strong class="text-emerald-400 font-extrabold">80%</strong> of your cumulative billing revenue. Focus marketing and relationship efforts on this core cluster.
           </div>
         </div>
       `;
-    }
-
-    function renderChat() {
-      const container = document.getElementById('chat-messages');
-      let html = "";
-
-      state.aiMessages.forEach(msg => {
-        const isUser = msg.role === 'user';
-        html += `
-          <div class="flex items-start space-x-2.5 max-w-[85%] ${isUser ? 'ml-auto flex-row-reverse space-x-reverse' : ''}">
-            <div class="p-1.5 rounded-lg flex-shrink-0 ${isUser ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-amber-400'}">
-              <i data-lucide="${isUser ? 'user' : 'bot'}" class="h-3.5 w-3.5"></i>
-            </div>
-            <div class="p-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
-              isUser ? 'bg-amber-500 text-slate-950 rounded-tr-none' : 'bg-slate-900 border border-slate-850 text-slate-200 rounded-tl-none'
-            }">
-              ${msg.content}
-            </div>
-          </div>
-        `;
-      });
-
-      if (state.isAiTyping) {
-        html += `
-          <div class="flex items-center space-x-2 text-slate-500 text-xs py-1">
-            <i data-lucide="loader-2" class="h-4 w-4 animate-spin text-amber-500"></i>
-            <span>Gemini is scanning transaction journals...</span>
-          </div>
-        `;
-      }
-
-      container.innerHTML = html;
-
-      const sendBtn = document.getElementById('chat-send-btn');
-      sendBtn.disabled = state.isAiTyping;
-
-      container.scrollTop = container.scrollHeight;
-      lucide.createIcons();
     }
 
     function renderLedgerModal() {
@@ -2000,17 +1825,17 @@ ${JSON.stringify(contextData, null, 2)}`;
       matches.forEach(t => {
         const isBill = t.type === 'bill';
         html += `
-          <div class="bg-slate-950/50 border border-slate-800/60 p-3 rounded-xl flex items-center justify-between text-xs">
+          <div class="bg-slate-950/50 border border-slate-800/60 p-2 rounded-lg flex items-center justify-between text-xs">
             <div>
-              <span class="px-2 py-0.5 rounded-md font-bold text-[8px] uppercase tracking-wide mr-1.5 ${
+              <span class="px-1.5 py-0.2 rounded font-bold text-[7px] uppercase tracking-wide mr-1 ${
                 isBill ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'
               }">
                 ${isBill ? 'Bill' : t.type === 'pay' ? 'Pay' : t.type}
               </span>
-              <span class="text-[10px] text-slate-400 font-semibold">${t.date}</span>
-              <p class="text-[10px] text-slate-500 mt-1 italic font-medium">"${t.remarks || 'Initial Join Entry'}"</p>
+              <span class="text-[9px] text-slate-400 font-semibold">${t.date}</span>
+              <p class="text-[9px] text-slate-500 mt-0.5 italic font-medium">"${t.remarks || 'Initial Join Entry'}"</p>
             </div>
-            <span class="font-black text-slate-100">${renderAmountValue(t.amount)}</span>
+            <span class="font-black text-slate-100 text-[11px]">${renderAmountValue(t.amount)}</span>
           </div>
         `;
       });
@@ -2025,5 +1850,3 @@ ${JSON.stringify(contextData, null, 2)}`;
   </script>
 </body>
 </html>
-
-```
