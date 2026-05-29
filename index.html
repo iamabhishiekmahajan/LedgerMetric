@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,26 +20,26 @@
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background-color: #040406;
       color: #e2e8f0;
+      -webkit-font-smoothing: antialiased;
     }
-    /* Custom premium scrollbar styling */
+    /* Mobile premium custom scrollbars */
     ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
     }
     ::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.3);
+      background: rgba(15, 23, 42, 0.2);
     }
     ::-webkit-scrollbar-thumb {
-      background: rgba(245, 158, 11, 0.2);
-      border-radius: 4px;
+      background: rgba(245, 158, 11, 0.15);
+      border-radius: 999px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: rgba(245, 158, 11, 0.4);
+      background: rgba(245, 158, 11, 0.35);
     }
-    /* Mic animation pulse */
     @keyframes pulse-red {
       0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.15); opacity: 0.7; }
+      50% { transform: scale(1.1); opacity: 0.7; }
     }
     .mic-recording {
       animation: pulse-red 1.2s infinite;
@@ -47,7 +48,7 @@
     }
   </style>
 </head>
-<body class="min-h-screen pb-20">
+<body class="min-h-screen pb-24">
 
   <!-- --- LOADING SPLASH SCREEN --- -->
   <div id="loader-screen" class="fixed inset-0 z-50 bg-[#040406] flex flex-col items-center justify-center p-6 text-center">
@@ -56,12 +57,12 @@
     </div>
     <div class="flex items-center space-x-2.5 text-slate-200 font-bold mb-2">
       <i data-lucide="loader-2" class="h-5 w-5 animate-spin text-amber-500"></i>
-      <span id="loader-text">Fetching Cloud Ledger...</span>
+      <span id="loader-text">Loading Cloud Ledger Database...</span>
     </div>
-    <p class="text-xs text-slate-500 max-w-xs leading-relaxed">Connecting safely to Google Sheets backend systems to audit ledgers.</p>
+    <p class="text-xs text-slate-500 max-w-xs leading-relaxed">Processing client records and active ledger balances securely...</p>
   </div>
 
-  <!-- --- SECURE STARTUP PASSCODE SCREEN --- -->
+  <!-- --- SECURE STARTUP PASSCODE SCREEN (NO TOGGLES) --- -->
   <div id="startup-lock-screen" class="hidden fixed inset-0 z-50 bg-[#040406] flex flex-col items-center justify-center p-6 text-center">
     <div class="bg-amber-500/10 p-4 rounded-3xl border border-amber-500/20 text-amber-500 mb-4">
       <i data-lucide="shield-check" class="h-10 w-10 animate-pulse"></i>
@@ -96,23 +97,15 @@
         </div>
       </div>
 
-      <!-- HEADER MODE TOGGLES (Secure mode is automatically unlocked) -->
-      <div class="flex items-center bg-slate-950 p-1.5 rounded-xl border border-slate-800/80">
+      <!-- HEADER MODE INDICATOR -->
+      <div class="flex items-center space-x-2">
         <button 
-          id="btn-mode-a"
-          onclick="setCipherMode('A')"
-          class="text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition text-slate-400 hover:text-white"
-        >
-          <i data-lucide="lock" class="h-3 w-3"></i>
-          <span>Mode A (Cipher)</span>
-        </button>
-        <button 
-          id="btn-mode-b"
-          onclick="setCipherMode('B')"
-          class="text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition bg-emerald-500 text-slate-950"
+          id="btn-mode-toggle"
+          onclick="toggleCipherMode()"
+          class="text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
         >
           <i data-lucide="unlock" class="h-3 w-3"></i>
-          <span>Mode B (Real)</span>
+          <span id="mode-text">Mode B (Real Values)</span>
         </button>
       </div>
     </header>
@@ -121,7 +114,7 @@
     <div class="bg-slate-950 px-4 py-2 border-b border-slate-800/80 text-[10px] text-slate-400 flex items-center justify-between">
       <span class="flex items-center gap-1.5 font-medium">
         <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        Ledger Status: <strong class="text-emerald-400">All-Time Accounts Authenticated</strong>
+        Ledger Milestone: <strong class="text-emerald-400">Post-14 April 2026 Analytical Metrics Active</strong>
       </span>
       <button onclick="fetchData()" class="text-amber-500 flex items-center gap-1 hover:underline font-bold">
         <i data-lucide="refresh-cw" class="h-3 w-3"></i> Refresh Data
@@ -129,188 +122,288 @@
     </div>
 
     <!-- --- MAIN CONTENT GRID --- -->
-    <main class="max-w-4xl mx-auto p-4 space-y-5">
+    <main class="max-w-4xl mx-auto p-3 space-y-4">
 
       <!-- --- MAIN KPI BLOCKS --- -->
-      <div class="grid grid-cols-3 gap-2.5">
-        <div class="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 text-center shadow-xs">
-          <span class="text-[9px] text-slate-500 uppercase block font-bold tracking-wider">Market Due</span>
+      <div class="grid grid-cols-3 gap-2">
+        <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-2.5 text-center shadow-xs">
+          <span class="text-[8px] text-slate-500 uppercase block font-bold tracking-wider">Market Due</span>
           <p id="kpi-market-due" class="text-xs font-black text-rose-500 mt-1">...</p>
         </div>
-        <div class="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 text-center shadow-xs">
-          <span class="text-[9px] text-slate-500 uppercase block font-bold tracking-wider">Total Sales</span>
+        <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-2.5 text-center shadow-xs">
+          <span class="text-[8px] text-slate-500 uppercase block font-bold tracking-wider">Total Sales</span>
           <p id="kpi-total-sales" class="text-xs font-black text-amber-500 mt-1">...</p>
         </div>
-        <div class="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 text-center shadow-xs">
-          <span class="text-[9px] text-slate-500 uppercase block font-bold tracking-wider">Collections</span>
+        <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-2.5 text-center shadow-xs">
+          <span class="text-[8px] text-slate-500 uppercase block font-bold tracking-wider">Collections</span>
           <p id="kpi-collections" class="text-xs font-black text-emerald-400 mt-1">...</p>
         </div>
       </div>
 
-      <!-- --- ADVANCED CREDIT HEALTH METRICS --- -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div class="bg-slate-900/20 border border-slate-800/50 rounded-2xl p-3.5">
-          <div class="flex items-center justify-between">
-            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Collection Efficiency (CEI)</span>
-            <i data-lucide="percent" class="h-4 w-4 text-emerald-400"></i>
-          </div>
-          <p id="metric-cei" class="text-lg font-black text-slate-100 mt-1.5">...</p>
-          <div class="w-full bg-slate-950 rounded-full h-1 mt-2 overflow-hidden">
-            <div id="cei-progress" class="bg-emerald-400 h-1 rounded-full" style="width: 0%"></div>
-          </div>
-          <p class="text-[9px] text-slate-500 mt-1.5">Ratio of collection post opening balances to sales</p>
-        </div>
-
-        <div class="bg-slate-900/20 border border-slate-800/50 rounded-2xl p-3.5">
-          <div class="flex items-center justify-between">
-            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Collection Cycle (DSO)</span>
-            <i data-lucide="clock" class="h-4 w-4 text-amber-400"></i>
-          </div>
-          <p id="metric-dso" class="text-lg font-black text-slate-100 mt-1.5">...</p>
-          <div class="w-full bg-slate-950 rounded-full h-1 mt-2 overflow-hidden">
-            <div id="dso-progress" class="bg-amber-400 h-1 rounded-full" style="width: 0%"></div>
-          </div>
-          <p class="text-[9px] text-slate-500 mt-1.5">Estimated average days taken to recover debts</p>
-        </div>
-
-        <div class="bg-slate-900/20 border border-slate-800/50 rounded-2xl p-3.5">
-          <div class="flex items-center justify-between">
-            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Portfolio Risk Rate</span>
-            <i data-lucide="shield-alert" class="h-4 w-4 text-rose-400"></i>
-          </div>
-          <p id="metric-risk" class="text-lg font-black text-slate-100 mt-1.5">...</p>
-          <div class="w-full bg-slate-950 rounded-full h-1 mt-2 overflow-hidden">
-            <div id="risk-progress" class="bg-rose-500 h-1 rounded-full" style="width: 0%"></div>
-          </div>
-          <p class="text-[9px] text-slate-500 mt-1.5">Percentage of outstanding held in dormant accounts</p>
-        </div>
-      </div>
-
       <!-- --- CUSTOMERS INTERACTIVE BOOK --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-3">
-          <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-2">
-            <i data-lucide="users" class="h-4 w-4 text-amber-500"></i> Active Ledger Customer Book
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
+          <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5">
+            <i data-lucide="users" class="h-4 w-4 text-amber-500"></i> Customer Directory & Financial Health
           </h3>
-          <span class="text-[9px] text-slate-500 font-bold">Tap row to view statements & Share PDF</span>
+          <span class="text-[9px] text-slate-500 font-bold hidden sm:inline">Tap row to view statements & Export PDF</span>
         </div>
 
-        <input 
-          id="customer-search-input"
-          type="text" 
-          placeholder="Search custom customer name, phone, city..."
-          oninput="handleSearchQuery(this.value)"
-          class="w-full bg-slate-950 border border-slate-800/60 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 text-xs mb-3 placeholder-slate-600"
-        />
+        <!-- Directory Filter and Sort Controls Bar -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+          <div class="sm:col-span-2">
+            <input 
+              id="customer-search-input"
+              type="text" 
+              placeholder="Search customer, location, contact, or segment..."
+              oninput="handleSearchQuery(this.value)"
+              class="w-full bg-slate-950 border border-slate-800/60 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-xs placeholder-slate-600"
+            />
+          </div>
+          <div>
+            <div class="flex items-center justify-between sm:justify-end space-x-1.5 bg-slate-950 px-2.5 py-2 rounded-lg border border-slate-800/60 w-full">
+              <label for="customer-sort-select" class="text-[8px] font-black uppercase text-slate-500 whitespace-nowrap">Sort By:</label>
+              <select 
+                id="customer-sort-select" 
+                onchange="setCustomerSort(this.value)"
+                class="bg-transparent text-[10px] font-bold outline-none text-amber-500 cursor-pointer w-full text-right sm:text-left"
+              >
+                <option value="balance" selected>Ledger Balance</option>
+                <option value="clv">CLV Spend</option>
+                <option value="frequency">Tx Frequency</option>
+                <option value="recency">Last Pay (Recency)</option>
+              </select>
+            </div>
+          </div>
+        </div>
 
-        <div id="customer-list-container" class="divide-y divide-slate-800/50 max-h-56 overflow-y-auto pr-1">
+        <div id="customer-list-container" class="divide-y divide-slate-800/40 max-h-72 overflow-y-auto pr-1 space-y-1">
           <!-- Dynamic injected rows -->
         </div>
       </section>
 
-      <!-- --- ROLLING CREDIT SALES VELOCITY (TOP 10) --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
+      <!-- --- ROLLING CREDIT SALES VELOCITY (TOP 20 - SCROLLABLE) --- -->
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-800 pb-2 mb-2.5">
           <div>
             <h3 class="font-extrabold text-xs uppercase text-slate-100">Rolling Credit Sales Velocity</h3>
-            <p class="text-[9px] text-slate-500 font-medium">Scrollable Top 10 customer list based on billing activities</p>
+            <p class="text-[8px] text-slate-500 font-medium">Scrollable top 20 active customer ledger billing speeds</p>
           </div>
 
-          <div class="flex space-x-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800/60">
-            <button id="range-btn-7" onclick="setRollingRange(7)" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">Last 7D</button>
-            <button id="range-btn-30" onclick="setRollingRange(30)" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">Last 30D</button>
-            <button id="range-btn-90" onclick="setRollingRange(90)" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">Last 90D</button>
+          <div class="flex flex-wrap gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800/60 self-start">
+            <button id="range-btn-7" onclick="setRollingRange(7)" class="text-[8px] px-2 py-1 rounded-md font-black transition">7D</button>
+            <button id="range-btn-30" onclick="setRollingRange(30)" class="text-[8px] px-2 py-1 rounded-md font-black transition">30D</button>
+            <button id="range-btn-90" onclick="setRollingRange(90)" class="text-[8px] px-2 py-1 rounded-md font-black transition">90D</button>
+            <button id="range-btn-180" onclick="setRollingRange(180)" class="text-[8px] px-2 py-1 rounded-md font-black transition">180D</button>
+            <button id="range-btn-360" onclick="setRollingRange(360)" class="text-[8px] px-2 py-1 rounded-md font-black transition">360D</button>
+            <button id="range-btn-lifetime" onclick="setRollingRange('lifetime')" class="text-[8px] px-2 py-1 rounded-md font-black transition">Lifetime</button>
           </div>
         </div>
 
-        <div id="rolling-list-container" class="max-h-56 overflow-y-auto pr-1 space-y-2">
-          <!-- Dynamic rolling list content -->
+        <div id="rolling-list-container" class="max-h-60 overflow-y-auto pr-1 space-y-1.5">
+          <!-- Dynamic rolling top 20 list content -->
         </div>
       </section>
 
-      <!-- --- PERFORMANCE SUMMARY PERIODS --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
+      <!-- --- STRATEGIC INSIGHTS (PARETO 80/20 & WEEKLY SEASONALITY) --- -->
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <!-- Weekly Seasonality Check -->
+        <div class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5 border-b border-slate-800 pb-2 mb-2.5">
+              <i data-lucide="calendar-days" class="h-4 w-4 text-amber-500"></i> Seasonality Check
+            </h3>
+            <p class="text-[8px] text-slate-500 mb-3 font-medium">Comparing total billing transaction volumes by weekdays</p>
+          </div>
+          <div id="seasonality-container" class="space-y-2">
+            <!-- Dynamic weekday progress indicators -->
+          </div>
+        </div>
+
+        <!-- Pareto 80/20 Revenue Impact Analysis -->
+        <div class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5 border-b border-slate-800 pb-2 mb-2.5">
+              <i data-lucide="pie-chart" class="h-4 w-4 text-emerald-500"></i> Pareto Credit Analysis (80/20 Rule)
+            </h3>
+            <p class="text-[8px] text-slate-500 mb-3 font-medium">Identifying the core client segment driving business revenue</p>
+          </div>
+          <div id="pareto-container" class="bg-slate-950/40 border border-slate-800/50 p-3 rounded-xl flex flex-col justify-center h-full">
+            <!-- Dynamic Pareto analysis numbers -->
+          </div>
+        </div>
+      </section>
+
+      <!-- --- PERFORMANCE SUMMARY MODULE --- -->
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm">
         <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
           <div>
-            <h3 class="font-extrabold text-xs uppercase text-slate-100">Performance Summarized Periods</h3>
-            <p class="text-[9px] text-slate-500 font-medium">Click on any period to review the Top Customers for that target interval</p>
+            <h3 class="font-extrabold text-xs uppercase text-slate-100">Analytical Summarized Audits</h3>
+            <p class="text-[8px] text-slate-500 font-medium">Drill down into periodic metrics. Current timeframe highlighted in orange.</p>
           </div>
 
-          <div class="flex space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800/60">
-            <button id="perf-tab-week" onclick="setPerformanceTab('week')" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">W1-W52 Weeks</button>
-            <button id="perf-tab-month" onclick="setPerformanceTab('month')" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">Monthly</button>
-            <button id="perf-tab-qtr" onclick="setPerformanceTab('qtr')" class="text-[9px] px-3 py-1.5 rounded-lg font-black transition">Quarterly</button>
+          <!-- Configuration Controls (Optional Year + Tab selector) -->
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Fiscal Year Selector (Optional) -->
+            <div class="flex items-center space-x-1 bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800/80">
+              <label for="fiscal-year-select" class="text-[8px] font-black uppercase text-slate-500">Year (Optional):</label>
+              <select 
+                id="fiscal-year-select" 
+                onchange="setFiscalYear(this.value)"
+                class="bg-transparent text-[9px] font-black outline-none text-amber-500 cursor-pointer"
+              >
+                <option value="2026" selected>2026</option>
+                <option value="2025">2025</option>
+                <option value="all">All Years (Optional)</option>
+              </select>
+            </div>
+
+            <!-- Tab Selectors -->
+            <div class="flex space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800/60">
+              <button id="perf-tab-days" onclick="setPerformanceTab('days')" class="text-[8px] px-2 py-1 rounded-md font-black transition">Days</button>
+              <button id="perf-tab-week" onclick="setPerformanceTab('week')" class="text-[8px] px-2 py-1 rounded-md font-black transition">ISO Weeks</button>
+              <button id="perf-tab-month" onclick="setPerformanceTab('month')" class="text-[8px] px-2 py-1 rounded-md font-black transition">Monthly</button>
+              <button id="perf-tab-qtr" onclick="setPerformanceTab('qtr')" class="text-[8px] px-2 py-1 rounded-md font-black transition">Quarterly</button>
+              <button id="perf-tab-year" onclick="setPerformanceTab('year')" class="text-[8px] px-2 py-1 rounded-md font-black transition">Yearly</button>
+            </div>
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Left list: top performance periods -->
+          <!-- Left column: periods list -->
           <div>
-            <span class="text-[8px] text-slate-500 uppercase block font-bold mb-2 tracking-wider">Top Performance Periods</span>
-            <div id="perf-periods-list" class="space-y-1.5 max-h-52 overflow-y-auto pr-1">
-              <!-- Injected period items -->
+            <span class="text-[8px] text-slate-500 uppercase block font-bold mb-2 tracking-wider">Chronological Ledger Periods</span>
+            <div id="perf-periods-list" class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+              <!-- Dynamic period items -->
             </div>
           </div>
 
-          <!-- Right list: selected period top customers -->
+          <!-- Right column: selected period top customers (Top 10 Scrollable) -->
           <div>
-            <span class="text-[8px] text-slate-500 uppercase block font-bold mb-2 tracking-wider">Top customer billing in chosen period</span>
-            <div id="perf-top-customers" class="bg-slate-950/30 border border-slate-800/60 rounded-2xl p-3 h-52 overflow-y-auto space-y-2">
-              <!-- Injected customers items -->
+            <span class="text-[8px] text-slate-500 uppercase block font-bold mb-2 tracking-wider">Top Customer Billings (Scrollable Top 10)</span>
+            <div id="perf-top-customers" class="bg-slate-950/30 border border-slate-800/60 rounded-xl p-3 h-60 overflow-y-auto space-y-2">
+              <!-- Injected customer records -->
             </div>
           </div>
         </div>
       </section>
 
       <!-- --- GEOGRAPHIC EXPOSURE & CIRCULAR SALES CHART --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
-        <div class="border-b border-slate-800 pb-2 mb-4">
-          <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5 flex-wrap">
-            <i data-lucide="building" class="h-4.5 w-4.5 text-amber-500"></i> Market Demographics & City Sales 
-            <span id="cities-date-range" class="text-[10px] text-slate-500 font-bold tracking-normal italic ml-auto sm:ml-2">...</span>
-          </h3>
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-800 pb-2 mb-4">
+          <div>
+            <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5 flex-wrap">
+              <i data-lucide="building" class="h-4.5 w-4.5 text-amber-500"></i> Market Demographics & City Sales Shares
+              <span id="cities-date-range" class="text-[9px] text-slate-500 font-bold tracking-normal italic">...</span>
+            </h3>
+          </div>
+          
+          <!-- Demographics Filter Controls -->
+          <div class="flex space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800/60 self-start">
+            <button id="demo-filter-month" onclick="setDemographicsFilter('month')" class="text-[8px] px-2.5 py-1 rounded-md font-black transition">This Month</button>
+            <button id="demo-filter-year" onclick="setDemographicsFilter('year')" class="text-[8px] px-2.5 py-1 rounded-md font-black transition">This Year</button>
+            <button id="demo-filter-all" onclick="setDemographicsFilter('all')" class="text-[8px] px-2.5 py-1 rounded-md font-black transition">All-Time</button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-          <!-- Sales Doughnut Chart -->
-          <div class="bg-slate-950/40 p-4 rounded-2xl border border-slate-800/50 flex flex-col items-center">
-            <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-3">Top Cities Sales Share</span>
-            <div class="w-48 h-48 relative">
-              <canvas id="cityChartCanvas"></canvas>
+          <!-- Multi-Graph Interface: Sales Doughnut & Sales Trend -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full md:col-span-2">
+            <!-- Sales Share Doughnut -->
+            <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-800/50 flex flex-col items-center">
+              <span class="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-2">City-wise Billing Share</span>
+              <div class="w-40 h-40 relative">
+                <canvas id="cityChartCanvas"></canvas>
+              </div>
+            </div>
+            
+            <!-- Sales vs Collection Trend -->
+            <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-800/50 flex flex-col items-center">
+              <span class="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-2">Monthly Sales vs Collections Trend (2026)</span>
+              <div class="w-full h-40 relative">
+                <canvas id="trendChartCanvas"></canvas>
+              </div>
             </div>
           </div>
 
-          <!-- Traditional Geographic Bar Distribution -->
-          <div id="city-distribution-container" class="space-y-3.5">
+          <!-- Geographic Bar Distribution -->
+          <div id="city-distribution-container" class="space-y-3 md:col-span-2">
             <!-- Dynamically filled cities -->
           </div>
         </div>
       </section>
 
       <!-- --- DORMANT HIGH-RISK CUSTOMER MONITOR --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl p-4 shadow-sm">
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-3.5 shadow-sm">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-800 pb-3 mb-3">
           <div>
             <h3 class="font-extrabold text-xs uppercase text-slate-100 flex items-center gap-1.5">
               <i data-lucide="alert-triangle" class="h-4.5 w-4.5 text-rose-500"></i> High-Risk Dormant Customer Accounts
             </h3>
-            <p class="text-[9px] text-slate-500 font-medium">List of accounts with outstandings but no recent payments received</p>
+            <p class="text-[8px] text-slate-500 font-medium">Clients with unpaid outstanding ledger dues holding no recent payments</p>
           </div>
 
-          <div class="flex space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800/60">
-            <button id="dormant-btn-2" onclick="setDormantLimit(2)" class="text-[9px] px-2.5 py-1.5 rounded-lg font-black transition">No Pay for 2+ Wks</button>
-            <button id="dormant-btn-4" onclick="setDormantLimit(4)" class="text-[9px] px-2.5 py-1.5 rounded-lg font-black transition">No Pay for 4+ Wks</button>
-            <button id="dormant-btn-8" onclick="setDormantLimit(8)" class="text-[9px] px-2.5 py-1.5 rounded-lg font-black transition">No Pay for 8+ Wks</button>
+          <div class="flex space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800/60 self-start">
+            <button id="dormant-btn-2" onclick="setDormantLimit(2)" class="text-[8px] px-2 py-1 rounded-md font-black transition">No Pay 2+ Wks</button>
+            <button id="dormant-btn-4" onclick="setDormantLimit(4)" class="text-[8px] px-2 py-1 rounded-md font-black transition">No Pay 4+ Wks</button>
+            <button id="dormant-btn-8" onclick="setDormantLimit(8)" class="text-[8px] px-2 py-1 rounded-md font-black transition">No Pay 8+ Wks</button>
           </div>
         </div>
 
-        <div id="dormant-list-container" class="divide-y divide-slate-800/50 max-h-52 overflow-y-auto pr-1">
+        <div id="dormant-list-container" class="divide-y divide-slate-800/40 max-h-52 overflow-y-auto pr-1">
           <!-- Dynamic dormant customers -->
         </div>
       </section>
 
+      <!-- --- CORE CREDIT CONTROL METRICS (CEI, DSO, AND RISK PERCENT) - ABSOLUTE BOTTOM --- -->
+      <section class="bg-slate-900/10 border border-slate-800/40 rounded-2xl p-3 shadow-inner">
+        <div class="text-center mb-3">
+          <span class="text-[8px] text-slate-500 font-bold uppercase tracking-widest block">Executive Summary Indicator Panel</span>
+          <h4 class="text-[10px] font-black text-slate-300 uppercase tracking-wider mt-0.5">Core Financial Health Metrics</h4>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+              <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Collection Efficiency (CEI)</span>
+              <i data-lucide="percent" class="h-3.5 w-3.5 text-emerald-400"></i>
+            </div>
+            <p id="metric-cei" class="text-base font-black text-slate-100 mt-1">...</p>
+            <div class="w-full bg-slate-950 rounded-full h-1 mt-1.5 overflow-hidden">
+              <div id="cei-progress" class="bg-emerald-400 h-1 rounded-full" style="width: 0%"></div>
+            </div>
+            <p class="text-[8px] text-slate-500 mt-1">Collected funds relative to credit sales since opening</p>
+          </div>
+
+          <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+              <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Collection Cycle (DSO)</span>
+              <i data-lucide="clock" class="h-3.5 w-3.5 text-amber-400"></i>
+            </div>
+            <p id="metric-dso" class="text-base font-black text-slate-100 mt-1">...</p>
+            <div class="w-full bg-slate-950 rounded-full h-1 mt-1.5 overflow-hidden">
+              <div id="dso-progress" class="bg-amber-400 h-1 rounded-full" style="width: 0%"></div>
+            </div>
+            <p class="text-[8px] text-slate-500 mt-1">Estimated average duration of outstanding accounts receivable</p>
+          </div>
+
+          <div class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+              <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Portfolio Risk Rate</span>
+              <i data-lucide="shield-alert" class="h-3.5 w-3.5 text-rose-400"></i>
+            </div>
+            <p id="metric-risk" class="text-base font-black text-slate-100 mt-1">...</p>
+            <div class="w-full bg-slate-950 rounded-full h-1 mt-1.5 overflow-hidden">
+              <div id="risk-progress" class="bg-rose-500 h-1 rounded-full" style="width: 0%"></div>
+            </div>
+            <p class="text-[8px] text-slate-500 mt-1">Total outstandings tied down in dormant portfolios</p>
+          </div>
+        </div>
+      </section>
+
       <!-- --- INTEGRATED GEMINI AI ADVISOR --- -->
-      <section class="bg-slate-900/30 border border-slate-800/60 rounded-3xl overflow-hidden shadow-lg">
+      <section class="bg-slate-900/30 border border-slate-800/60 rounded-2xl overflow-hidden shadow-lg mt-2">
         <div class="bg-slate-900/80 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
           <div class="flex items-center space-x-2.5">
             <div class="bg-amber-500/10 p-2 rounded-xl text-amber-500">
@@ -375,7 +468,7 @@
 
     <!-- --- STATEMENT LEDGER DRILLDOWN MODAL --- -->
     <div id="ledger-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg p-5 shadow-2xl relative">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-5 shadow-2xl relative">
         <button 
           onclick="closeLedgerModal()"
           class="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full border border-slate-800/80"
@@ -424,7 +517,7 @@
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHDEi_3-0oaLvlPqM3tJdDcMLCdOvr3DNRdl-DDOcAJu_oCJrLCrukhRycnN6nBcwY/exec";
     
     // Cross-Browser timezone independent construct for 14th April 2026 milestone
-    const ANALYSIS_START = new Date(2026, 3, 14, 0, 0, 0); // 3 = April (0-indexed months)
+    const ANALYSIS_START = new Date(2026, 3, 14, 0, 0, 0); // April 14th 2026
     
     // Fallback support for local key insertion
     let apiKey = localStorage.getItem('ledgermatric_gemini_key') || "";
@@ -433,23 +526,24 @@
     let recognition = null;
     let isRecordingVoice = false;
 
-    // Chart.js instance holder
+    // ChartJS Instances
     let cityDoughnutChart = null;
+    let trendChart = null;
 
     // --- APPLICATION STATE ---
     const state = {
       isLoading: true,
       isUnlocked: false,
-      loaderText: "Fetching Cloud Ledger...",
       rawTxns: [],
       filteredTxns: [],
       customers: {},
       globalBalances: [],
       searchQuery: "",
-      currentMode: 'B', // Real Mode Active (Toggles are secure from start)
+      currentMode: 'B', 
       selectedDrilldownCustomer: null,
       dormantWeeksLimit: 4,
       dormantCustomersList: [],
+      customerSort: 'balance', // Default sorting type for Customer Directory
       metrics: {
         totalDue: 0,
         totalSales: 0,
@@ -463,8 +557,10 @@
       currentRange: 7,
       rollingTopCustomers: [],
       rollingDateText: "",
-      currentTab: 'month', // 'week' | 'month' | 'qtr'
+      currentTab: 'days', // Defaults to Days tab view
+      demographicsFilter: 'all', // Month / Year / All-Time options
       selectedPeriod: null,
+      selectedYear: "2026", 
       periodBilled: 0,
       periodPaid: 0,
       periodTopCustomers: [],
@@ -479,18 +575,18 @@
       isAiTyping: false
     };
 
-    // --- CUSTOM PREMIUM TOAST MESSENGER (Replaces unsafe alert boxes) ---
+    // --- TOAST NOTIFICATIONS (Safari Friendly) ---
     function showToast(message, type = 'info') {
       let container = document.getElementById('toast-container');
       if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
-        container.className = 'fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none';
+        container.className = 'fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4';
         document.body.appendChild(container);
       }
 
       const toast = document.createElement('div');
-      toast.className = `p-4 rounded-xl shadow-2xl border text-xs font-bold transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2.5`;
+      toast.className = `p-3 rounded-xl shadow-2xl border text-xs font-bold transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2`;
       
       if (type === 'error') {
         toast.className += ' bg-rose-950/90 border-rose-800 text-rose-200';
@@ -505,7 +601,7 @@
       if (type === 'success') icon = 'check-circle';
 
       toast.innerHTML = `
-        <i data-lucide="${icon}" class="h-4.5 w-4.5 flex-shrink-0"></i>
+        <i data-lucide="${icon}" class="h-4 w-4 flex-shrink-0"></i>
         <span>${message}</span>
       `;
       
@@ -525,7 +621,6 @@
     }
 
     // --- "KANPURCITY" CIPHER ENCODING ---
-    // k-1, a-2, n-3, p-4, u-5, r-6, c-7, i-8, t-9, y-0
     const encodeValue = (val) => {
       const num = Math.round(val);
       if (isNaN(num)) return "N/A";
@@ -545,9 +640,17 @@
       return "₹" + Math.round(val).toLocaleString('en-IN');
     };
 
-    // --- ENCRYPTION CONTROLS ---
-    function setCipherMode(mode) {
-      state.currentMode = mode;
+    function toggleCipherMode() {
+      state.currentMode = state.currentMode === 'A' ? 'B' : 'A';
+      const modeText = document.getElementById('mode-text');
+      const modeBtn = document.getElementById('btn-mode-toggle');
+      if (state.currentMode === 'A') {
+        modeText.innerText = "Mode A (Cipher Active)";
+        modeBtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20";
+      } else {
+        modeText.innerText = "Mode B (Real Values)";
+        modeBtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1 transition bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20";
+      }
       render();
     }
 
@@ -560,6 +663,7 @@
         document.getElementById('startup-passcode-input').value = "";
         document.getElementById('startup-error-msg').classList.add('hidden');
         render();
+        showToast("Ledger workspace decrypted!", "success");
       } else if (val.trim().length >= 2) {
         document.getElementById('startup-error-msg').classList.remove('hidden');
       } else {
@@ -570,7 +674,7 @@
     // --- FETCH DATA (WITH AUTOMATIC MOCK FALLBACK) ---
     const fetchData = async () => {
       state.isLoading = true;
-      state.loaderText = "Connecting to cloud database...";
+      state.loaderText = "Syncing Google Sheets Ledger...";
       render();
 
       try {
@@ -603,63 +707,62 @@
         });
 
         const result = await Promise.race([fetchPromise, timeoutPromise]);
-        state.loaderText = "Analyzing sheet logs...";
+        state.loaderText = "Processing accounts & matrices...";
         render();
         processData(result);
       } catch (err) {
         console.warn("Falling back to demo mock dataset matches.");
-        state.loaderText = "Syncing Offline Mock...";
+        state.loaderText = "Running offline system sandbox...";
         render();
         
         const demoResult = {
           customers: {
-            "Shingar Kala": { city: "meena bazar", phone: "9812345670", joinedDate: "2026-01-13" },
-            "madan": { city: "meena bazar", phone: "9812345671", joinedDate: "2026-02-10" },
-            "sanjeev ji": { city: "Atari bazar", phone: "9812345672", joinedDate: "2025-11-05" },
-            "sat guru kirpa": { city: "meena bazar", phone: "9812345673", joinedDate: "2026-03-01" },
-            "Turli": { city: "meena bazar", phone: "9812345674", joinedDate: "2026-01-15" },
-            "Prem Ji di Hatti": { city: "Phagwara", phone: "9812345675", joinedDate: "2026-02-28" },
-            "rahul arora": { city: "Bargo camp", phone: "9812345676", joinedDate: "2026-03-20" },
-            "minty": { city: "meena bazar", phone: "9812345677", joinedDate: "2026-03-11" },
-            "kapil ji": { city: "Jalandhar", phone: "9812345678", joinedDate: "2025-10-14" },
-            "KAKA JI": { city: "hazipur", phone: "9812345679", joinedDate: "2026-04-01" }
+            "Shingar Kala": { city: "meena bazar", phone: "9812345670", joinedDate: "2026-04-13" },
+            "madan": { city: "meena bazar", phone: "9812345671", joinedDate: "2026-04-13" },
+            "sanjeev ji": { city: "Atari bazar", phone: "9812345672", joinedDate: "2026-04-13" },
+            "sat guru kirpa": { city: "meena bazar", phone: "9812345673", joinedDate: "2026-04-13" },
+            "Turli": { city: "meena bazar", phone: "9812345674", joinedDate: "2026-04-13" },
+            "Prem Ji di Hatti": { city: "Phagwara", phone: "9812345675", joinedDate: "2026-04-13" },
+            "rahul arora": { city: "Bargo camp", phone: "9812345676", joinedDate: "2026-04-13" },
+            "minty": { city: "meena bazar", phone: "9812345677", joinedDate: "2026-04-13" },
+            "kapil ji": { city: "Jalandhar", phone: "9812345678", joinedDate: "2026-04-13" },
+            "KAKA JI": { city: "hazipur", phone: "9812345679", joinedDate: "2026-04-13" }
           },
           txns: [
-            { name: "Shingar Kala", amount: 0, date: "2026-01-13", type: "join" },
-            { name: "Shingar Kala", amount: 3530, date: "2026-01-14", type: "bill" },
-            { name: "Shingar Kala", amount: 1805, date: "2026-02-15", type: "bill" },
-            { name: "Shingar Kala", amount: 1805, date: "2026-03-02", type: "bill" },
-            { name: "Shingar Kala", amount: 3570, date: "2026-03-18", type: "bill" },
-            { name: "Shingar Kala", amount: 3865, date: "2026-04-20", type: "bill" },
-            { name: "Shingar Kala", amount: 1700, date: "2026-05-11", type: "bill" },
-            { name: "madan", amount: 0, date: "2026-02-10", type: "join" },
-            { name: "madan", amount: 2250, date: "2026-02-11", type: "bill" },
-            { name: "madan", amount: 100, date: "2026-03-01", type: "bill" },
-            { name: "madan", amount: 2585, date: "2026-03-12", type: "bill" },
-            { name: "madan", amount: 1980, date: "2026-04-05", type: "bill" },
-            { name: "madan", amount: 1495, date: "2026-04-18", type: "bill" },
-            { name: "madan", amount: 40, date: "2026-05-01", type: "bill" },
-            { name: "madan", amount: 3815, date: "2026-05-15", type: "bill" },
-            { name: "madan", amount: 2563, date: "2026-05-25", type: "bill" },
-            { name: "madan", amount: 12000, date: "2026-05-27", type: "pay" },
-            { name: "sanjeev ji", amount: 0, date: "2025-11-05", type: "join" },
-            { name: "sanjeev ji", amount: 725, date: "2025-11-10", type: "pay" },
-            { name: "sanjeev ji", amount: 17387, date: "2025-12-01", type: "bill" },
-            { name: "sanjeev ji", amount: 7485, date: "2026-01-15", type: "bill" },
-            { name: "sanjeev ji", amount: 6000, date: "2026-02-20", type: "pay" },
-            { name: "sanjeev ji", amount: 15000, date: "2026-03-10", type: "pay" },
-            { name: "sat guru kirpa", amount: 0, date: "2026-03-01", type: "join" },
-            { name: "sat guru kirpa", amount: 30000, date: "2026-03-15", type: "pay" },
-            { name: "sat guru kirpa", amount: 7675, date: "2026-04-05", type: "bill" },
-            { name: "Shingar Kala", amount: 136153, date: "2026-04-12", type: "bill" },
-            { name: "madan", amount: 106602, date: "2026-05-14", type: "bill" }
+            { name: "Shingar Kala", amount: 0, date: "2026-04-13", type: "join" },
+            { name: "Shingar Kala", amount: 45000, date: "2026-04-15", type: "bill", remarks: "Linen Stocks Pack" },
+            { name: "Shingar Kala", amount: 12000, date: "2026-04-20", type: "bill", remarks: "Synthetics roll" },
+            { name: "Shingar Kala", amount: 35000, date: "2026-05-10", type: "pay", remarks: "Part payment" },
+            { name: "madan", amount: 0, date: "2026-04-13", type: "join" },
+            { name: "madan", amount: 85000, date: "2026-04-18", type: "bill", remarks: "Cotton yards order" },
+            { name: "madan", amount: 40000, date: "2026-05-12", type: "pay", remarks: "Cash collected" },
+            { name: "sanjeev ji", amount: 0, date: "2026-04-13", type: "join" },
+            { name: "sanjeev ji", amount: 145000, date: "2025-11-10", type: "bill", remarks: "Prev Year Carry" },
+            { name: "sanjeev ji", amount: 15000, date: "2026-04-19", type: "pay", remarks: "Clearing past ledger" },
+            { name: "sat guru kirpa", amount: 0, date: "2026-04-13", type: "join" },
+            { name: "sat guru kirpa", amount: 72000, date: "2026-04-22", type: "bill", remarks: "Designer wear bundles" },
+            { name: "sat guru kirpa", amount: 72000, date: "2026-05-18", type: "pay", remarks: "Full settlement" },
+            { name: "Turli", amount: 0, date: "2026-04-13", type: "join" },
+            { name: "Turli", amount: 31000, date: "2026-04-25", type: "bill" },
+            { name: "Prem Ji di Hatti", amount: 0, date: "2026-04-13", type: "join" },
+            { name: "Prem Ji di Hatti", amount: 94000, date: "2026-04-30", type: "bill" },
+            { name: "Prem Ji di Hatti", amount: 20000, date: "2026-05-14", type: "pay" },
+            { name: "rahul arora", amount: 0, date: "2026-04-13", type: "join" },
+            { name: "rahul arora", amount: 28000, date: "2026-05-02", type: "bill" },
+            { name: "minty", amount: 0, date: "2026-04-13", type: "join" },
+            { name: "minty", amount: 43000, date: "2026-05-08", type: "bill" },
+            { name: "kapil ji", amount: 0, date: "2026-04-13", type: "join" },
+            { name: "kapil ji", amount: 120000, date: "2026-05-15", type: "bill" },
+            { name: "kapil ji", amount: 30000, date: "2026-05-24", type: "pay" },
+            { name: "KAKA JI", amount: 0, date: "2026-04-13", type: "join" },
+            { name: "KAKA JI", amount: 15000, date: "2026-05-20", type: "bill" }
           ]
         };
         processData(demoResult);
       } finally {
         setTimeout(() => {
           state.isLoading = false;
-          // SHOW SECURITY SCREEN INSTANTLY AFTER LOAD
+          // Trigger blocking security screen
           document.getElementById('loader-screen').classList.add('hidden');
           if (!state.isUnlocked) {
             document.getElementById('startup-lock-screen').classList.remove('hidden');
@@ -677,7 +780,7 @@
       const custMap = db.customers || {};
       state.customers = custMap;
 
-      // Safe date formatting conversion for WebKit engines
+      // Safe date formatting conversion for WebKit/Safari engines
       const txs = (db.txns || []).map(t => {
         let pDate;
         if (t.date) {
@@ -694,73 +797,81 @@
       
       state.rawTxns = txs;
 
-      // Filter based on 14th April 2026 to start periodic calculations
-      const filtered = txs.filter(t => t.parsedDate >= ANALYSIS_START);
-      state.filteredTxns = filtered;
-
+      // Primary outstanding due calculations check all-time records to protect prior balances
       let totalDueSum = 0;
-      let totalSalesSum = 0;
-      let collectionsSum = 0;
-      let age15Sum = 0;
-      let age30Sum = 0;
-      let agePlusSum = 0;
-      let cityDebtMap = {};
-      let citySalesMap = {};
-      const now = new Date();
       const computedBalances = [];
 
       Object.keys(custMap).forEach(name => {
-        // Outstanding calculations check all-time records to make sure we don't drop past balances
         const cTxnsAll = txs.filter(t => t.name === name);
         const salesAll = cTxnsAll.filter(t => t.type === 'bill').reduce((s, t) => s + Number(t.amount || 0), 0);
         const paysAll = cTxnsAll.filter(t => t.type === 'pay').reduce((s, t) => s + Number(t.amount || 0), 0);
         const finalBal = salesAll - paysAll;
 
-        computedBalances.push({ name, balance: finalBal });
+        // Custom groupings based on all-time spend metrics (CLV definition)
+        const clvVal = salesAll;
+        const totalPaidVal = paysAll;
+        const billToPayRatio = clvVal > 0 ? (totalPaidVal / clvVal) * 100 : (totalPaidVal > 0 ? 100 : 0);
+
+        // Calculate transaction frequency
+        const txnFreq = cTxnsAll.filter(t => t.type === 'bill' || t.type === 'pay').length;
+
+        // Calculate Recency: Days since last pay
+        let recencyDays = 999;
+        const sortedPays = cTxnsAll.filter(t => t.type === 'pay').sort((a,b) => b.parsedDate - a.parsedDate);
+        if (sortedPays[0]) {
+          const now = new Date();
+          recencyDays = Math.ceil((now - sortedPays[0].parsedDate) / (1000 * 60 * 60 * 24));
+        }
+
+        computedBalances.push({ 
+          name, 
+          balance: finalBal, 
+          clv: clvVal, 
+          paid: totalPaidVal,
+          ratio: billToPayRatio,
+          frequency: txnFreq,
+          recency: recencyDays
+        });
 
         if (finalBal > 0) {
           totalDueSum += finalBal;
         }
-
-        // Periodic credit metrics (Post-14th April 2026)
-        const cTxnsFiltered = filtered.filter(t => t.name === name);
-        const fSales = cTxnsFiltered.filter(t => t.type === 'bill').reduce((s, t) => s + Number(t.amount || 0), 0);
-        const fPays = cTxnsFiltered.filter(t => t.type === 'pay').reduce((s, t) => s + Number(t.amount || 0), 0);
-        const fBal = fSales - fPays;
-
-        const city = custMap[name].city || 'Unmapped';
-
-        if (fSales > 0) {
-          citySalesMap[city] = (citySalesMap[city] || 0) + fSales;
-        }
-
-        if (fBal > 0) {
-          cityDebtMap[city] = (cityDebtMap[city] || 0) + fBal;
-
-          const lastBill = cTxnsFiltered.filter(t => t.type === 'bill').sort((a,b) => b.parsedDate - a.parsedDate)[0];
-          if (lastBill) {
-            const diff = Math.ceil((now - lastBill.parsedDate) / (1000 * 60 * 60 * 24));
-            if (diff <= 15) age15Sum += fBal;
-            else if (diff <= 30) age30Sum += fBal;
-            else agePlusSum += fBal;
-          } else {
-            agePlusSum += fBal;
-          }
-        }
-
-        cTxnsFiltered.forEach(t => {
-          if (t.type === 'bill') totalSalesSum += Number(t.amount || 0);
-          if (t.type === 'pay') collectionsSum += Number(t.amount || 0);
-        });
       });
 
-      computedBalances.sort((a,b) => b.balance - a.balance);
+      // Customer size-based sorting to apply Platinum (Top 10%), Gold (Next 40%), Silver (Bottom 50%)
+      computedBalances.sort((a,b) => b.clv - a.clv);
+      const totalCustCount = computedBalances.length;
+      computedBalances.forEach((cust, index) => {
+        const percentile = (index / totalCustCount) * 100;
+        if (percentile <= 10) {
+          cust.segment = 'Platinum';
+        } else if (percentile <= 50) {
+          cust.segment = 'Gold';
+        } else {
+          cust.segment = 'Silver';
+        }
+      });
+
       state.globalBalances = computedBalances;
 
-      // Collection Efficiency Index (Post-April 14th)
-      const ceiValue = totalSalesSum > 0 ? (collectionsSum / totalSalesSum) * 100 : 0;
+      // Filter periodic transactions for Metrics & Summaries STRICTLY starting post April 14, 2026
+      const filtered = txs.filter(t => t.parsedDate >= ANALYSIS_START);
+      state.filteredTxns = filtered;
 
-      // DSO: Uses overall outstanding balance compared against periodic billing activities
+      let totalSalesSum = 0;
+      let collectionsSum = 0;
+
+      filtered.forEach(t => {
+        if (t.type === 'bill') {
+          totalSalesSum += Number(t.amount || 0);
+        }
+        if (t.type === 'pay') {
+          collectionsSum += Number(t.amount || 0);
+        }
+      });
+
+      // Calculate primary ratios (Post-April 14th 2026)
+      const ceiValue = totalSalesSum > 0 ? (collectionsSum / totalSalesSum) * 100 : 0;
       const dsoValue = totalSalesSum > 0 ? (totalDueSum / totalSalesSum) * 365 : 0;
 
       state.metrics = {
@@ -769,18 +880,16 @@
         recentCollections: collectionsSum,
         cei: ceiValue,
         dso: dsoValue,
-        riskPercent: 0, // Assigned inside updateDormantList
-        age15: age15Sum,
-        age30: age30Sum,
-        agePlus: agePlusSum,
-        cityDebt: cityDebtMap,
-        citySales: citySalesMap
+        riskPercent: 0, 
+        cityDebt: {},
+        citySales: {}
       };
 
-      // Recalculate modules
+      // Recalculate dependent visualizers
       updateDormantList();
       updateRollingRangeTopCustomers();
       updatePerformanceTabState();
+      updateCityDemographics();
     };
 
     // --- COHORTS AND FILTERING ACTIONS ---
@@ -795,14 +904,67 @@
       renderRollingList();
     }
 
+    function setFiscalYear(yr) {
+      state.selectedYear = yr;
+      updatePerformanceTabState();
+      renderPerformanceTab();
+    }
+
+    function setDemographicsFilter(filter) {
+      state.demographicsFilter = filter;
+      updateCityDemographics();
+      renderCityDistribution();
+    }
+
+    function setCustomerSort(val) {
+      state.customerSort = val;
+      renderCustomersBook();
+    }
+
     // --- SUB-SYSTEM UPDATE CALCULATIONS ---
+    function updateCityDemographics() {
+      const filter = state.demographicsFilter || 'all';
+      const citySalesMap = {};
+      const cityDebtMap = {};
+      const now = new Date(2026, 4, 30); // May 30, 2026 reference
+      
+      state.filteredTxns.forEach(t => {
+        if (t.type === 'bill') {
+          let pass = false;
+          if (filter === 'month') {
+            pass = (t.parsedDate.getFullYear() === now.getFullYear() && t.parsedDate.getMonth() === now.getMonth());
+          } else if (filter === 'year') {
+            pass = (t.parsedDate.getFullYear() === now.getFullYear());
+          } else {
+            pass = true; // All-time
+          }
+          
+          if (pass) {
+            const city = state.customers[t.name]?.city || 'Unmapped';
+            citySalesMap[city] = (citySalesMap[city] || 0) + Number(t.amount || 0);
+          }
+        }
+      });
+
+      // Maintain filtered dues for city distributions
+      state.globalBalances.forEach(cb => {
+        const city = state.customers[cb.name]?.city || 'Unmapped';
+        if (cb.balance > 0) {
+          cityDebtMap[city] = (cityDebtMap[city] || 0) + cb.balance;
+        }
+      });
+      
+      state.metrics.citySales = citySalesMap;
+      state.metrics.cityDebt = cityDebtMap;
+    }
+
     function updateDormantList() {
       const now = new Date();
       const limitDays = state.dormantWeeksLimit * 7;
       const list = [];
       let totalDormantOutstanding = 0;
 
-      state.globalBalances.forEach(({ name, balance }) => {
+      state.globalBalances.forEach(({ name, balance, recency }) => {
         if (balance > 0) {
           const cTxns = state.rawTxns.filter(t => t.name === name && t.type === 'pay');
           const sortedPays = cTxns.sort((a, b) => b.parsedDate - a.parsedDate);
@@ -822,18 +984,21 @@
       });
 
       state.dormantCustomersList = list.sort((a,b) => b.balance - a.balance);
-      
-      // Calculate Risk Percentage (Dormant outstanding balance divided by total market outstandings)
       state.metrics.riskPercent = state.metrics.totalDue > 0 ? (totalDormantOutstanding / state.metrics.totalDue) * 100 : 0;
     }
 
     function updateRollingRangeTopCustomers() {
-      const now = new Date();
-      const cutoff = new Date();
-      cutoff.setDate(now.getDate() - state.currentRange);
-
-      const effectiveCutoff = cutoff < ANALYSIS_START ? ANALYSIS_START : cutoff;
+      const now = new Date(2026, 4, 30); // May 30, 2026 reference
       const customerSales = {};
+
+      let effectiveCutoff;
+      if (state.currentRange === 'lifetime') {
+        effectiveCutoff = ANALYSIS_START;
+      } else {
+        const cutoff = new Date(now.getTime());
+        cutoff.setDate(now.getDate() - state.currentRange);
+        effectiveCutoff = cutoff < ANALYSIS_START ? ANALYSIS_START : cutoff;
+      }
 
       state.filteredTxns.forEach(t => {
         if (t.type === 'bill' && t.parsedDate >= effectiveCutoff) {
@@ -841,49 +1006,94 @@
         }
       });
 
-      state.rollingTopCustomers = Object.entries(customerSales).sort((a,b) => b[1]-a[1]).slice(0, 10);
-      const startStr = effectiveCutoff.toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
-      const endStr = now.toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
-      state.rollingDateText = `${startStr} - ${endStr}`;
+      // Yield top 20 active customers
+      state.rollingTopCustomers = Object.entries(customerSales).sort((a,b) => b[1]-a[1]).slice(0, 20);
+      
+      if (state.currentRange === 'lifetime') {
+        state.rollingDateText = "Lifetime History";
+      } else {
+        const startStr = effectiveCutoff.toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
+        const endStr = now.toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
+        state.rollingDateText = `${startStr} - ${endStr}`;
+      }
     }
+
+    // --- MONDAY TO SUNDAY ISO WEEK CALCULATOR ---
+    const getISOWeek = (date) => {
+      const tempDate = new Date(date.getTime());
+      tempDate.setDate(tempDate.getDate() + 4 - (tempDate.getDay() || 7));
+      const yearStart = new Date(tempDate.getFullYear(), 0, 1);
+      return Math.ceil((((tempDate - yearStart) / 86400000) + 1) / 7);
+    };
 
     const getPeriodKey = (parsedDate, type) => {
       const d = new Date(parsedDate);
       if (isNaN(d.getTime())) return "Unknown";
-      if (type === 'week') {
-        const yearStart = new Date(d.getFullYear(), 0, 1);
-        const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-        const clampedWeek = weekNo > 52 ? 52 : weekNo;
-        return `Week ${clampedWeek}`;
+      
+      if (type === 'days') {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      } else if (type === 'week') {
+        const weekNum = getISOWeek(d);
+        return `Week ${weekNum} (${d.getFullYear()})`;
       } else if (type === 'month') {
         return d.toLocaleString('default', { month: 'short' }) + " " + d.getFullYear();
       } else if (type === 'qtr') {
         const q = Math.floor(d.getMonth() / 3) + 1;
         return "Q" + q + " " + d.getFullYear();
+      } else if (type === 'year') {
+        return d.getFullYear().toString();
       }
       return d.getFullYear().toString();
     };
 
+    // --- IDENTIFY TODAY'S CURRENT RUNNING ACTIVE PERIOD ---
+    const getTodayActivePeriodKey = (type) => {
+      const d = new Date(2026, 4, 30); // May 30, 2026 reference
+      return getPeriodKey(d, type);
+    };
+
     function updatePerformanceTabState() {
-      const periodTotals = {};
-      state.filteredTxns.forEach(t => {
-        if (t.type === 'bill') {
-          const pKey = getPeriodKey(t.parsedDate, state.currentTab);
-          periodTotals[pKey] = (periodTotals[pKey] || 0) + Number(t.amount || 0);
-        }
-      });
+      let yearFilteredTx = state.filteredTxns;
+      if (state.selectedYear !== 'all') {
+        const targetYr = parseInt(state.selectedYear);
+        yearFilteredTx = state.filteredTxns.filter(t => t.parsedDate.getFullYear() === targetYr);
+      }
 
-      const sortedPeriods = Object.entries(periodTotals).sort((a,b) => b[1] - a[1]).slice(0, 10);
-      state.topPeriodsList = sortedPeriods;
+      if (state.currentTab === 'days') {
+        // Aggregate billing totals by specific Days
+        const dayTotals = {};
+        yearFilteredTx.forEach(t => {
+          if (t.type === 'bill') {
+            const dayKey = getPeriodKey(t.parsedDate, 'days');
+            dayTotals[dayKey] = (dayTotals[dayKey] || 0) + Number(t.amount || 0);
+          }
+        });
+        // Sort and yield ALL days sorted by sales amount in DESCENDING order (highest sale first)
+        state.topPeriodsList = Object.entries(dayTotals).sort((a,b) => b[1] - a[1]);
+      } else {
+        const periodTotals = {};
+        yearFilteredTx.forEach(t => {
+          if (t.type === 'bill') {
+            const pKey = getPeriodKey(t.parsedDate, state.currentTab);
+            periodTotals[pKey] = (periodTotals[pKey] || 0) + Number(t.amount || 0);
+          }
+        });
+        // Already sorted by sales value descending
+        state.topPeriodsList = Object.entries(periodTotals).sort((a,b) => b[1] - a[1]);
+      }
 
-      const activePeriodKey = state.selectedPeriod || (sortedPeriods[0] ? sortedPeriods[0][0] : null);
+      const activePeriodKey = state.selectedPeriod || (state.topPeriodsList[0] ? state.topPeriodsList[0][0] : null);
 
       let billSum = 0;
       let paySum = 0;
       const customerMap = {};
 
-      state.filteredTxns.forEach(t => {
+      yearFilteredTx.forEach(t => {
         const tKey = getPeriodKey(t.parsedDate, state.currentTab);
+
         if (tKey === activePeriodKey) {
           if (t.type === 'bill') {
             billSum += Number(t.amount || 0);
@@ -896,7 +1106,7 @@
 
       state.periodBilled = billSum;
       state.periodPaid = paySum;
-      state.periodTopCustomers = Object.entries(customerMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
+      state.periodTopCustomers = Object.entries(customerMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
     }
 
     function selectPeriod(pKey) {
@@ -924,6 +1134,7 @@
       renderLedgerModal();
     }
 
+    // --- GEOLOCATION API KEY DRAWER TOGGLES ---
     function closeLedgerModal() {
       state.selectedDrilldownCustomer = null;
       document.getElementById('ledger-modal').classList.add('hidden');
@@ -946,7 +1157,7 @@
         recognition = new window.SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = false;
-        recognition.lang = 'en-IN'; // Indian English / Regional speech patterns
+        recognition.lang = 'en-IN';
 
         recognition.onstart = () => {
           isRecordingVoice = true;
@@ -990,13 +1201,12 @@
     async function triggerPdfGeneration() {
       const selectedCustomer = state.selectedDrilldownCustomer;
       const durationSelect = document.getElementById('pdf-duration-select');
-      const monthsSelected = durationSelect.value; // '1', '3', '6', 'all'
+      const monthsSelected = durationSelect.value;
       
       if (!selectedCustomer) return;
       
-      // Calculate date boundary
       const now = new Date();
-      let cutoffDate = new Date(1970, 0, 1); // Earliest possible boundary for 'all'
+      let cutoffDate = new Date(1970, 0, 1);
       
       if (monthsSelected !== 'all') {
         const monthsCount = parseInt(monthsSelected);
@@ -1004,30 +1214,25 @@
         cutoffDate.setMonth(now.getMonth() - monthsCount);
       }
 
-      // Filter transactions for specific client that are within cutoff date
       const allTx = state.rawTxns.filter(t => t.name === selectedCustomer);
       const filteredTx = allTx.filter(t => t.parsedDate >= cutoffDate);
 
-      // Setup jsPDF
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
-      // Premium Styling setup
-      doc.setFillColor(15, 23, 42); // slate-900 background header band
+      doc.setFillColor(15, 23, 42); 
       doc.rect(0, 0, 210, 38, 'F');
 
-      // Title header
-      doc.setTextColor(251, 191, 36); // amber-400
+      doc.setTextColor(251, 191, 36); 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(22);
       doc.text("LedgerMetric Statement", 14, 18);
 
       doc.setFontSize(9);
-      doc.setTextColor(226, 232, 240); // slate-200
+      doc.setTextColor(226, 232, 240); 
       doc.text("Premium Business Credit Intelligence & Analytics", 14, 25);
       doc.text(`Generated: ${now.toLocaleDateString('en-IN')} ${now.toLocaleTimeString()}`, 14, 31);
 
-      // Metadata customer details block
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(11);
       doc.text("CLIENT SUMMARY INFORMATION", 14, 48);
@@ -1044,7 +1249,6 @@
       doc.text(`Contact Phone: ${meta.phone || 'N/A'}`, 14, 66);
       doc.text(`Statement Period: ${monthsSelected === 'all' ? 'All-Time Activity' : `Last ${monthsSelected} Month(s)`}`, 14, 71);
 
-      // Calculated details
       const custAllTimeSales = allTx.filter(t => t.type === 'bill').reduce((s, t) => s + Number(t.amount || 0), 0);
       const custAllTimePays = allTx.filter(t => t.type === 'pay').reduce((s, t) => s + Number(t.amount || 0), 0);
       const totalOutstanding = custAllTimeSales - custAllTimePays;
@@ -1053,15 +1257,13 @@
       doc.setTextColor(15, 23, 42);
       doc.text("Outstanding Due:", 140, 55);
       doc.setFontSize(16);
-      doc.setTextColor(225, 29, 72); // rose-600
+      doc.setTextColor(225, 29, 72); 
       doc.text("INR " + Math.round(totalOutstanding).toLocaleString('en-IN'), 140, 63);
 
-      // Line dividing metadata and table
       doc.setDrawColor(203, 213, 225);
       doc.line(14, 78, 196, 78);
 
-      // Table Headers
-      doc.setFillColor(51, 65, 85); // slate-700
+      doc.setFillColor(51, 65, 85); 
       doc.rect(14, 84, 182, 8, 'F');
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
@@ -1071,7 +1273,6 @@
       doc.text("Remarks", 80, 89);
       doc.text("Amount (INR)", 165, 89);
 
-      // Populate Table Rows
       let currentY = 97;
       doc.setFont("helvetica", "normal");
       doc.setTextColor(51, 65, 85);
@@ -1080,10 +1281,8 @@
         doc.text("No transactions recorded during this specific timeframe.", 18, currentY);
       } else {
         filteredTx.forEach((txn, index) => {
-          // Page boundary check
           if (currentY > 275) {
             doc.addPage();
-            // Reprint Headers
             doc.setFillColor(51, 65, 85);
             doc.rect(14, 15, 182, 8, 'F');
             doc.setFont("helvetica", "bold");
@@ -1098,7 +1297,6 @@
             currentY = 28;
           }
 
-          // Shading alternating rows
           if (index % 2 === 0) {
             doc.setFillColor(248, 250, 252);
             doc.rect(14, currentY - 5, 182, 7, 'F');
@@ -1120,11 +1318,9 @@
         });
       }
 
-      // Output as PDF Blob
       const pdfOutputBlob = doc.output('blob');
       const pdfFile = new File([pdfOutputBlob], `${selectedCustomer.replace(/\s+/g, '_')}_statement.pdf`, { type: 'application/pdf' });
 
-      // Robust check for Safari type compatibility inside Web Share API
       let sharedSuccessful = false;
       try {
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
@@ -1136,7 +1332,7 @@
           sharedSuccessful = true;
         }
       } catch (shareErr) {
-        console.warn("Share failed or was blocked on this device configuration:", shareErr);
+        console.warn("Share failed or blocked on this device config:", shareErr);
       }
 
       if (!sharedSuccessful) {
@@ -1145,12 +1341,12 @@
           showToast("Statement PDF exported successfully!", "success");
         } catch (saveErr) {
           console.error("PDF download failed:", saveErr);
-          showToast("Failed to download PDF. Please allow automatic popups.", "error");
+          showToast("Failed to download PDF.", "error");
         }
       }
     }
 
-    // --- GEOLOCATION API KEY DRAWER TOGGLES ---
+    // --- API KEY CONFIGURATOR ---
     function toggleApiKeyInput() {
       const el = document.getElementById('api-key-panel');
       el.classList.toggle('hidden');
@@ -1184,13 +1380,19 @@
           total_due: state.metrics.totalDue,
           total_sales: state.metrics.totalSales,
           collections: state.metrics.recentCollections,
+          cei_efficiency: state.metrics.cei,
+          risk_factor_percent: state.metrics.riskPercent,
           debt_aging: { age15: state.metrics.age15, age30: state.metrics.age30, agePlus: state.metrics.agePlus }
         },
-        city_debt_exposures: state.metrics.cityDebt,
         city_sales_billed: state.metrics.citySales,
-        customer_balances: state.globalBalances.map(b => ({
+        customer_segments_and_clv: state.globalBalances.map(b => ({
           name: b.name,
           balance: b.balance,
+          clv: b.clv,
+          paid_to_billed_ratio: b.ratio,
+          segment: b.segment,
+          recency_days: b.recency,
+          frequency_count: b.frequency,
           city: state.customers[b.name]?.city || "Jalandhar"
         })),
         all_time_transactions: state.rawTxns.map(t => ({
@@ -1216,7 +1418,7 @@ ${JSON.stringify(contextData, null, 2)}`;
 
       try {
         const queryKey = apiKey || "";
-        const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${queryKey}`;
+        const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${queryKey}`;
         const payload = {
           contents: [{ role: "user", parts: [{ text: userText }] }],
           systemInstruction: { parts: [{ text: systemPrompt }] }
@@ -1242,33 +1444,21 @@ ${JSON.stringify(contextData, null, 2)}`;
 
     // --- CENTRAL RENDERING ENGINE ---
     function render() {
-      if (state.isLoading) return; // Keep loader running
+      if (state.isLoading) return; // Wait for async fetching
 
-      // 1. Unlocked check
+      // 1. Unlocked Lock Screen
       if (!state.isUnlocked) {
         document.getElementById('startup-lock-screen').classList.remove('hidden');
         document.getElementById('app-container').classList.add('hidden');
         return;
       }
 
-      // 2. Mode Toggle button paint
-      const modeABtn = document.getElementById('btn-mode-a');
-      const modeBBtn = document.getElementById('btn-mode-b');
-
-      if (state.currentMode === 'A') {
-        modeABtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition bg-amber-500 text-slate-950";
-        modeBBtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition text-slate-400 hover:text-white";
-      } else {
-        modeABtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition text-slate-400 hover:text-white";
-        modeBBtn.className = "text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition bg-emerald-500 text-slate-950";
-      }
-
-      // 3. Render main numeric KPI highlights
+      // 2. Main KPI highlights
       document.getElementById('kpi-market-due').innerText = renderAmountValue(state.metrics.totalDue);
       document.getElementById('kpi-total-sales').innerText = renderAmountValue(state.metrics.totalSales);
       document.getElementById('kpi-collections').innerText = renderAmountValue(state.metrics.recentCollections);
 
-      // 4. Advanced credit metrics progress sliders
+      // 3. Dynamic Progress Sliders (CEI, DSO, Portfolio Risk)
       document.getElementById('metric-cei').innerText = state.metrics.cei.toFixed(1) + "%";
       document.getElementById('cei-progress').style.width = Math.min(state.metrics.cei, 100) + "%";
 
@@ -1279,28 +1469,51 @@ ${JSON.stringify(contextData, null, 2)}`;
       document.getElementById('metric-risk').innerText = state.metrics.riskPercent.toFixed(1) + "%";
       document.getElementById('risk-progress').style.width = Math.min(state.metrics.riskPercent, 100) + "%";
 
-      // 5. Generate date range context for dynamic demographic section
+      // 4. Generate dynamic date range labels for demographics header
       const startStr = "14-Apr-2026";
-      const endStr = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
-      document.getElementById('cities-date-range').innerText = `(${startStr} - ${endStr})`;
+      const endStr = new Date(2026, 4, 30).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+      let rangeLabel = `(${startStr} - ${endStr})`;
+      if (state.demographicsFilter === 'month') {
+        rangeLabel = "(May 2026)";
+      } else if (state.demographicsFilter === 'year') {
+        rangeLabel = "(Year 2026)";
+      }
+      document.getElementById('cities-date-range').innerText = rangeLabel;
 
-      // 6. Paint Child Directories and chart graphics
+      // 5. Paint dynamic cohorts and chart graphics
       renderCustomersBook();
       renderRollingList();
       renderPerformanceTab();
       renderCityDistribution();
       renderDormantList();
       renderChat();
+      renderSeasonalityAndPareto();
 
-      // Trigger Lucide element parsing
+      // Trigger Lucide parsing
       lucide.createIcons();
     }
 
     // --- SECTION DIRECTORY BUILDERS ---
 
     function renderCustomersBook() {
-      const filteredBalances = state.globalBalances.filter(b => 
-        b.name.toLowerCase().includes(state.searchQuery.toLowerCase())
+      // Dynamic sorting wrapper to avoid mutating precomputed CLV segments
+      let sortedBalances = [...state.globalBalances];
+      
+      const sortType = state.customerSort || 'balance';
+      if (sortType === 'balance') {
+        sortedBalances.sort((a, b) => b.balance - a.balance);
+      } else if (sortType === 'clv') {
+        sortedBalances.sort((a, b) => b.clv - a.clv);
+      } else if (sortType === 'frequency') {
+        sortedBalances.sort((a, b) => b.frequency - a.frequency);
+      } else if (sortType === 'recency') {
+        // Most recent payments first (ascending days: e.g. 0d ago, then 5d, 22d, and lastly 999d/never)
+        sortedBalances.sort((a, b) => a.recency - b.recency);
+      }
+
+      const filteredBalances = sortedBalances.filter(b => 
+        b.name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+        (b.segment && b.segment.toLowerCase().includes(state.searchQuery.toLowerCase()))
       );
       
       const container = document.getElementById('customer-list-container');
@@ -1312,20 +1525,46 @@ ${JSON.stringify(contextData, null, 2)}`;
       let html = "";
       filteredBalances.forEach(b => {
         const cMeta = state.customers[b.name] || {};
+        
+        // Define beautiful Segment styling
+        let segBadge = `<span class="bg-slate-800 text-slate-300 text-[8px] font-bold px-1.5 py-0.5 rounded mr-1">Silver</span>`;
+        if (b.segment === 'Platinum') {
+          segBadge = `<span class="bg-amber-500/20 text-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded border border-amber-500/20 mr-1">Platinum</span>`;
+        } else if (b.segment === 'Gold') {
+          segBadge = `<span class="bg-indigo-500/20 text-indigo-400 text-[8px] font-bold px-1.5 py-0.5 rounded border border-indigo-500/10 mr-1">Gold</span>`;
+        }
+
+        // Define Profitability check
+        let reminderBadge = "";
+        if (b.ratio < 50) {
+          reminderBadge = `<span class="bg-rose-500/10 text-rose-400 text-[8px] font-extrabold px-1.5 py-0.5 rounded border border-rose-500/20 ml-1">Needs Reminder</span>`;
+        } else {
+          reminderBadge = `<span class="bg-emerald-500/10 text-emerald-400 text-[8px] font-medium px-1.5 py-0.5 rounded border border-emerald-500/10 ml-1">Healthy</span>`;
+        }
+
         html += `
           <div 
             onclick="openLedgerModal('${b.name}')"
-            class="flex justify-between items-center py-3 hover:bg-slate-900/40 rounded-xl px-2 transition-colors cursor-pointer"
+            class="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 hover:bg-slate-900/40 rounded-xl px-2.5 transition-colors cursor-pointer gap-2"
           >
             <div>
-              <h4 class="font-bold text-xs text-slate-100">${b.name}</h4>
-              <p class="text-[9px] text-slate-500 mt-0.5 font-medium">${cMeta.city || "meena bazar"} • ${cMeta.phone || "N/A"}</p>
+              <div class="flex items-center gap-1 flex-wrap">
+                <h4 class="font-bold text-xs text-slate-100">${b.name}</h4>
+                ${segBadge}
+                ${reminderBadge}
+              </div>
+              <p class="text-[9px] text-slate-500 mt-1 font-medium">
+                ${cMeta.city || "meena bazar"} • ${cMeta.phone || "N/A"} • 
+                CLV: <strong class="text-slate-300">${renderAmountValue(b.clv)}</strong> • 
+                Recency: <strong class="text-slate-300">${b.recency === 999 ? 'Never' : `${b.recency}d`}</strong> • 
+                Freq: <strong class="text-slate-300">${b.frequency} txs</strong>
+              </p>
             </div>
-            <div class="text-right">
-              <span class="font-black text-xs ${b.balance > 0 ? 'text-rose-500' : 'text-emerald-400'}">
+            <div class="text-right self-end sm:self-center">
+              <span class="font-black text-xs ${b.balance > 0 ? 'text-rose-500' : 'text-emerald-400'} block">
                 ${renderAmountValue(b.balance)}
               </span>
-              <p class="text-[8px] text-amber-500 font-bold block mt-0.5">Click to Statement</p>
+              <p class="text-[8px] text-amber-500 font-bold block">Bill-to-Pay Ratio: ${Math.round(b.ratio)}%</p>
             </div>
           </div>
         `;
@@ -1333,13 +1572,16 @@ ${JSON.stringify(contextData, null, 2)}`;
       container.innerHTML = html;
     }
 
+    // --- RENDER ROLLING VELOCITY SCROLLABLE LIST ---
     function renderRollingList() {
-      [7, 30, 90].forEach(d => {
+      ['7', '30', '90', '180', '360', 'lifetime'].forEach(d => {
         const btn = document.getElementById(`range-btn-${d}`);
-        if (state.currentRange === d) {
-          btn.className = "text-[9px] px-3 py-1.5 rounded-lg font-black transition bg-amber-500 text-slate-950 shadow-xs";
-        } else {
-          btn.className = "text-[9px] px-3 py-1.5 rounded-lg font-black transition text-slate-400 hover:text-white";
+        if (btn) {
+          if (String(state.currentRange) === d) {
+            btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition bg-amber-500 text-slate-950 shadow-xs";
+          } else {
+            btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition text-slate-400 hover:text-white";
+          }
         }
       });
 
@@ -1352,9 +1594,9 @@ ${JSON.stringify(contextData, null, 2)}`;
       let html = "";
       state.rollingTopCustomers.forEach(([name, amt], idx) => {
         html += `
-          <div class="flex justify-between items-center py-2.5 px-3 bg-slate-950/40 rounded-xl border border-slate-800/40 text-xs">
+          <div class="flex justify-between items-center py-2 px-2.5 bg-slate-950/40 rounded-lg border border-slate-800/40 text-xs">
             <div class="flex items-center space-x-2">
-              <span class="font-extrabold text-[9px] text-amber-500">#${idx + 1}</span>
+              <span class="font-extrabold text-[8px] text-amber-500">#${idx + 1}</span>
               <span class="font-bold text-slate-200">${name}</span>
             </div>
             <span class="font-extrabold text-slate-100">${renderAmountValue(amt)}</span>
@@ -1364,39 +1606,54 @@ ${JSON.stringify(contextData, null, 2)}`;
       container.innerHTML = html;
     }
 
+    // --- RENDER PERIODIC AUDIT SUMMARIES ---
     function renderPerformanceTab() {
-      ['week', 'month', 'qtr'].forEach(t => {
+      // Toggle tab highlights
+      ['days', 'week', 'month', 'qtr', 'year'].forEach(t => {
         const btn = document.getElementById(`perf-tab-${t}`);
-        if (state.currentTab === t) {
-          btn.className = "text-[9px] px-3 py-1.5 rounded-lg font-black transition bg-amber-500 text-slate-950 shadow-xs";
-        } else {
-          btn.className = "text-[9px] px-3 py-1.5 rounded-lg font-black transition text-slate-400 hover:text-white";
+        if (btn) {
+          if (state.currentTab === t) {
+            btn.className = "text-[8px] px-2 py-1 rounded-md font-black transition bg-amber-500 text-slate-950 shadow-xs";
+          } else {
+            btn.className = "text-[8px] px-2 py-1 rounded-md font-black transition text-slate-400 hover:text-white";
+          }
         }
       });
 
       const periodsContainer = document.getElementById('perf-periods-list');
       let periodsHtml = "";
+      
       const currentSelected = state.selectedPeriod || (state.topPeriodsList[0] ? state.topPeriodsList[0][0] : null);
+      const activeRunningPeriod = getTodayActivePeriodKey(state.currentTab);
 
       state.topPeriodsList.forEach(([pKey, amt]) => {
         const isSel = pKey === currentSelected;
+        
+        let highlightClass = "";
+        if (pKey === activeRunningPeriod && (state.selectedYear === "2026" || state.selectedYear === "all")) {
+          highlightClass = "border-orange-500/60 bg-orange-500/10 text-orange-400 font-extrabold";
+        } else if (isSel) {
+          highlightClass = "bg-amber-500/10 border-amber-500/50 text-amber-400";
+        } else {
+          highlightClass = "bg-slate-950/40 border-slate-800/40 hover:border-slate-700 text-slate-300";
+        }
+
         periodsHtml += `
           <div 
             onclick="selectPeriod('${pKey}')"
-            class="flex justify-between items-center p-2.5 rounded-xl text-xs cursor-pointer border transition-all ${
-              isSel ? 'bg-amber-500/10 border-amber-500/50 text-amber-400' : 'bg-slate-950/40 border-slate-800/40 hover:border-slate-700 text-slate-300'
-            }"
+            class="flex justify-between items-center p-2 rounded-xl text-xs cursor-pointer border transition-all ${highlightClass}"
           >
-            <span class="font-bold">${pKey}</span>
+            <span class="font-bold">${pKey} ${pKey === activeRunningPeriod && (state.selectedYear === "2026" || state.selectedYear === "all") ? '(Current)' : ''}</span>
             <span class="font-extrabold">${renderAmountValue(amt)}</span>
           </div>
         `;
       });
-      periodsContainer.innerHTML = periodsHtml;
+      periodsContainer.innerHTML = periodsHtml || `<p class="text-xs text-slate-500 text-center py-6">No historical records in target fiscal year.</p>`;
 
+      // Right column: Selected period details (Top 10 Scrollable)
       const customersContainer = document.getElementById('perf-top-customers');
       if (state.periodTopCustomers.length === 0) {
-        customersContainer.innerHTML = `<p class="text-xs text-slate-600 text-center py-10">No records found.</p>`;
+        customersContainer.innerHTML = `<p class="text-xs text-slate-600 text-center py-10">No records found for selected interval.</p>`;
         return;
       }
 
@@ -1404,7 +1661,7 @@ ${JSON.stringify(contextData, null, 2)}`;
       state.periodTopCustomers.forEach(([name, amt], idx) => {
         custHtml += `
           <div class="flex justify-between items-center text-xs pb-1.5 border-b border-slate-900/60 last:border-none">
-            <span class="text-slate-300">#${idx + 1} ${name}</span>
+            <span class="text-slate-300 text-xs">#${idx + 1} ${name}</span>
             <span class="font-extrabold text-slate-100">${renderAmountValue(amt)}</span>
           </div>
         `;
@@ -1412,7 +1669,21 @@ ${JSON.stringify(contextData, null, 2)}`;
       customersContainer.innerHTML = custHtml;
     }
 
+    // --- GEOGRAPHIC CHART & BAR GRAPH DISTRIBUTION ---
     function renderCityDistribution() {
+      // Highlight demographics filters
+      const dFilter = state.demographicsFilter || 'all';
+      ['month', 'year', 'all'].forEach(f => {
+        const btn = document.getElementById(`demo-filter-${f}`);
+        if (btn) {
+          if (dFilter === f) {
+            btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition bg-amber-500 text-slate-950 shadow-xs";
+          } else {
+            btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition text-slate-400 hover:text-white";
+          }
+        }
+      });
+
       const container = document.getElementById('city-distribution-container');
       const sortedCities = Object.entries(state.metrics.citySales).sort((a,b) => b[1] - a[1]).slice(0, 5);
 
@@ -1427,11 +1698,11 @@ ${JSON.stringify(contextData, null, 2)}`;
         const pct = totalSales > 0 ? (amt / totalSales) * 100 : 0;
         html += `
           <div>
-            <div class="flex justify-between text-xs font-semibold mb-1">
+            <div class="flex justify-between text-[11px] font-semibold mb-1">
               <span>${city}</span>
               <span class="text-amber-400 font-bold">${renderAmountValue(amt)} (${pct.toFixed(1)}%)</span>
             </div>
-            <div class="bg-slate-950 border border-slate-800/50 rounded-full h-2.5 overflow-hidden">
+            <div class="bg-slate-950 border border-slate-800/50 rounded-full h-2 overflow-hidden">
               <div style="background: #f59e0b; width: ${Math.min(pct, 100)}%; height: 100%; border-radius: 999px;"></div>
             </div>
           </div>
@@ -1439,7 +1710,7 @@ ${JSON.stringify(contextData, null, 2)}`;
       });
       container.innerHTML = html;
 
-      // Safe multi-tasking initialization wrapper for Safari WebKit
+      // Safe asynchronous wrapper for Safari canvas paint
       setTimeout(() => {
         const canvasEl = document.getElementById('cityChartCanvas');
         if (!canvasEl) return;
@@ -1451,7 +1722,7 @@ ${JSON.stringify(contextData, null, 2)}`;
           try {
             cityDoughnutChart.destroy();
           } catch (e) {
-            console.warn("Chart destroy exception:", e);
+            console.warn("Chart reset exception:", e);
           }
         }
 
@@ -1465,11 +1736,11 @@ ${JSON.stringify(contextData, null, 2)}`;
             datasets: [{
               data: dataValues,
               backgroundColor: [
-                '#f59e0b', // Amber-500
-                '#ef4444', // Red-500
-                '#10b981', // Emerald-500
-                '#3b82f6', // Blue-500
-                '#8b5cf6'  // Purple-500
+                '#f59e0b', 
+                '#ef4444', 
+                '#10b981', 
+                '#3b82f6', 
+                '#8b5cf6'  
               ],
               borderColor: '#0f172a',
               borderWidth: 2
@@ -1479,9 +1750,7 @@ ${JSON.stringify(contextData, null, 2)}`;
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              legend: {
-                display: false
-              },
+              legend: { display: false },
               tooltip: {
                 callbacks: {
                   label: function(context) {
@@ -1493,16 +1762,85 @@ ${JSON.stringify(contextData, null, 2)}`;
             cutout: '75%'
           }
         });
+
+        // Trigger safe secondary graph rendering
+        renderTrendChart();
       }, 50);
     }
 
+    // --- SECOND GRAPH: SALES & COLLECTIONS TRENDS ---
+    function renderTrendChart() {
+      const canvasEl = document.getElementById('trendChartCanvas');
+      if (!canvasEl) return;
+      const ctx = canvasEl.getContext('2d');
+      if (!ctx) return;
+      
+      if (trendChart && typeof trendChart.destroy === 'function') {
+        try {
+          trendChart.destroy();
+        } catch (e) {
+          console.warn("Trend chart destruction failure:", e);
+        }
+      }
+      
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const salesData = new Array(12).fill(0);
+      const collectionsData = new Array(12).fill(0);
+      
+      state.filteredTxns.forEach(t => {
+        if (t.parsedDate.getFullYear() === 2026) {
+          const monthIdx = t.parsedDate.getMonth();
+          if (t.type === 'bill') {
+            salesData[monthIdx] += Number(t.amount || 0);
+          } else if (t.type === 'pay') {
+            collectionsData[monthIdx] += Number(t.amount || 0);
+          }
+        }
+      });
+      
+      trendChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: 'Sales',
+              data: salesData,
+              backgroundColor: '#f59e0b', 
+              borderRadius: 3
+            },
+            {
+              label: 'Collections',
+              data: collectionsData,
+              backgroundColor: '#10b981', 
+              borderRadius: 3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#94a3b8', font: { size: 8 } }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 8 } }, grid: { display: false } },
+            y: { ticks: { color: '#94a3b8', font: { size: 8 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    }
+
+    // --- DORMANT HIGH-RISK MONITOR LIST ---
     function renderDormantList() {
       [2, 4, 8].forEach(w => {
         const btn = document.getElementById(`dormant-btn-${w}`);
         if (state.dormantWeeksLimit === w) {
-          btn.className = "text-[9px] px-2.5 py-1.5 rounded-lg font-black transition bg-rose-500/10 text-rose-400 border border-rose-500/20";
+          btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition bg-rose-500/10 text-rose-400 border border-rose-500/20";
         } else {
-          btn.className = "text-[9px] px-2.5 py-1.5 rounded-lg font-black transition text-slate-400";
+          btn.className = "text-[8px] px-2.5 py-1 rounded-md font-black transition text-slate-400";
         }
       });
 
@@ -1519,7 +1857,7 @@ ${JSON.stringify(contextData, null, 2)}`;
             <div>
               <h5 class="font-bold text-slate-200">${item.name}</h5>
               <p class="text-[9px] text-slate-500 mt-0.5 font-medium">
-                Last payment trace: <strong class="text-slate-400">${item.lastPayDate}</strong> (${item.diffDays === 999 ? "Never Billed Pay" : `${item.diffDays} days ago`})
+                Last payment trace: <strong class="text-slate-400">${item.lastPayDate}</strong> (${item.diffDays === 999 ? "Never Paid" : `${item.diffDays} days ago`})
               </p>
             </div>
             <div class="text-right">
@@ -1530,6 +1868,79 @@ ${JSON.stringify(contextData, null, 2)}`;
         `;
       });
       container.innerHTML = html;
+    }
+
+    // --- RENDER SEASONALITY AND PARETO INTEL BLOCKS ---
+    function renderSeasonalityAndPareto() {
+      // 1. Weekly Seasonality Check
+      const seasonalityContainer = document.getElementById('seasonality-container');
+      const weekdayBilling = [0, 0, 0, 0, 0, 0, 0]; 
+      const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      
+      state.filteredTxns.forEach(t => {
+        if (t.type === 'bill') {
+          const dayIndex = t.parsedDate.getDay();
+          weekdayBilling[dayIndex] += Number(t.amount || 0);
+        }
+      });
+
+      const maxDayVal = Math.max(...weekdayBilling);
+      let weekdayHtml = "";
+      
+      const displayIndices = [1, 2, 3, 4, 5, 6, 0];
+      displayIndices.forEach(idx => {
+        const amt = weekdayBilling[idx];
+        const pctOfMax = maxDayVal > 0 ? (amt / maxDayVal) * 100 : 0;
+        const isPeak = amt === maxDayVal && maxDayVal > 0;
+        
+        weekdayHtml += `
+          <div>
+            <div class="flex justify-between text-[10px] mb-0.5 font-bold ${isPeak ? 'text-amber-400' : 'text-slate-400'}">
+              <span>${weekdayNames[idx]} ${isPeak ? '🔥 (Peak)' : ''}</span>
+              <span>${renderAmountValue(amt)}</span>
+            </div>
+            <div class="bg-slate-950 border border-slate-800/40 rounded-full h-2 overflow-hidden">
+              <div class="h-full rounded-full transition-all ${isPeak ? 'bg-amber-500' : 'bg-slate-700/60'}" style="width: ${pctOfMax}%"></div>
+            </div>
+          </div>
+        `;
+      });
+      seasonalityContainer.innerHTML = weekdayHtml;
+
+      // 2. Pareto 80/20 Rule Impact Calculations
+      const paretoContainer = document.getElementById('pareto-container');
+      const sortedRevenueCust = [...state.globalBalances].sort((a,b) => b.clv - a.clv);
+      const totalRevenue = sortedRevenueCust.reduce((acc, c) => acc + c.clv, 0);
+
+      let runningSum = 0;
+      let targetCustCount = 0;
+      let paretoAchieved = false;
+
+      sortedRevenueCust.forEach((cust, index) => {
+        runningSum += cust.clv;
+        if (runningSum >= totalRevenue * 0.8 && !paretoAchieved) {
+          targetCustCount = index + 1;
+          paretoAchieved = true;
+        }
+      });
+
+      if (totalRevenue === 0) {
+        paretoContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No historical sales revenue logs to perform Pareto study.</p>`;
+        return;
+      }
+
+      const percentageOfCust = (targetCustCount / sortedRevenueCust.length) * 100;
+      const roundedPct = Math.round(percentageOfCust);
+
+      paretoContainer.innerHTML = `
+        <div class="text-center">
+          <p class="text-2xl font-black text-emerald-400">${roundedPct}%</p>
+          <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">Core Customer Concentration</p>
+          <div class="mt-2.5 text-[10px] text-slate-300 leading-relaxed text-center font-medium">
+            Just <strong class="text-emerald-400 font-extrabold">${targetCustCount} out of ${sortedRevenueCust.length}</strong> active clients generate <strong class="text-emerald-400 font-extrabold">80%</strong> of your cumulative billing revenue. Focus marketing and relationship efforts on this core cluster.
+          </div>
+        </div>
+      `;
     }
 
     function renderChat() {
@@ -1614,3 +2025,5 @@ ${JSON.stringify(contextData, null, 2)}`;
   </script>
 </body>
 </html>
+
+```
